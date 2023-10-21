@@ -49,6 +49,7 @@ void initialize_csg_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(CSGTorus3D);
 		GDREGISTER_CLASS(CSGPolygon3D);
 		GDREGISTER_CLASS(CSGCombiner3D);
+		GDREGISTER_CLASS(CSGDeform3D);
 	}
 #ifdef TOOLS_ENABLED
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {

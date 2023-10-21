@@ -31,13 +31,24 @@
 #ifndef CSG_SHAPE_H
 #define CSG_SHAPE_H
 
+#include "core/io/file_access.h"
+#include "core/io/marshalls.h"
+#include "core/math/math_defs.h"
+#include "core/math/random_number_generator.h"
+#include "core/object/class_db.h"
+#include "core/object/object.h"
+#include "core/os/memory.h"
+#include "core/variant/variant.h"
 #include "csg.h"
 
 #include "scene/3d/path_3d.h"
 #include "scene/3d/visual_instance_3d.h"
 #include "scene/resources/concave_polygon_shape_3d.h"
 
+#include "scene/resources/material.h"
+#include "scene/resources/mesh.h"
 #include "thirdparty/misc/mikktspace.h"
+#include <cmath>
 
 class CSGShape3D : public GeometryInstance3D {
 	GDCLASS(CSGShape3D, GeometryInstance3D);
@@ -192,6 +203,7 @@ public:
 	CSGPrimitive3D();
 };
 
+class CSGDeform3D;
 class CSGMesh3D : public CSGPrimitive3D {
 	GDCLASS(CSGMesh3D, CSGPrimitive3D);
 
@@ -201,6 +213,7 @@ class CSGMesh3D : public CSGPrimitive3D {
 	Ref<Material> material;
 
 	void _mesh_changed();
+	friend CSGDeform3D;
 
 protected:
 	static void _bind_methods();
@@ -211,6 +224,418 @@ public:
 
 	void set_material(const Ref<Material> &p_material);
 	Ref<Material> get_material() const;
+};
+
+class CSGDeform3D : public CSGMesh3D {
+	GDCLASS(CSGDeform3D, CSGMesh3D);
+	PackedVector3Array lattice;
+	PackedVector3Array start_lattice;
+	Vector3 lattice_size = Vector3(2, 2, 2);
+	Vector3i lattice_res = Vector3i(9, 9, 9);
+	bool fix_normals = true;
+	bool smooth = false;
+
+public:
+	CSGDeform3D() {}
+
+	void set_lattice(const PackedVector3Array &value) {
+		lattice = value;
+		_mesh_changed();
+	}
+
+	PackedVector3Array get_lattice() const {
+		return lattice;
+	}
+
+	void set_lattice_size(const Vector3 &value) {
+		lattice_size = value;
+		_mesh_changed();
+	}
+
+	Vector3 get_lattice_size() const {
+		return lattice_size;
+	}
+
+	void set_lattice_res(const Vector3i &value) {
+		lattice_res = value.clamp(Vector3i(1, 1, 1), Vector3i(64, 64, 64));
+
+		_mesh_changed();
+	}
+
+	Vector3i get_lattice_res() const {
+		return lattice_res;
+	}
+
+	void set_fix_normals(bool value) {
+		fix_normals = value;
+		_mesh_changed();
+	}
+
+	bool get_fix_normals() const {
+		return fix_normals;
+	}
+
+	void set_smooth(bool value) {
+		smooth = value;
+		_mesh_changed();
+	}
+
+	bool get_smooth() const {
+		return smooth;
+	}
+
+	Vector3 lattice_get_fast(const Vector3 &coord) {
+		Vector3 res = lattice_res;
+		Vector3 resm1 = lattice_res - Vector3(1, 1, 1);
+
+		Vector3 coord_mod = (coord / lattice_size + Vector3(0.5, 0.5, 0.5)) * resm1;
+		Vector3 cf = coord_mod.floor();
+
+		Vector3i a = Vector3i(cf).clamp(Vector3i(), resm1) * Vector3i(1, res.x, res.x * res.y);
+		Vector3i b = Vector3i(cf + Vector3(1, 1, 1)).clamp(Vector3i(), resm1) * Vector3i(1, res.x, res.x * res.y);
+
+		Vector3 t = (coord_mod - cf).clamp(Vector3(), Vector3(1, 1, 1));
+
+		Vector3 aaa = lattice[a.z + a.y + a.x];
+		Vector3 baa = lattice[a.z + a.y + b.x];
+		Vector3 aba = lattice[a.z + b.y + a.x];
+		Vector3 bba = lattice[a.z + b.y + b.x];
+		Vector3 aab = lattice[b.z + a.y + a.x];
+		Vector3 bab = lattice[b.z + a.y + b.x];
+		Vector3 abb = lattice[b.z + b.y + a.x];
+		Vector3 bbb = lattice[b.z + b.y + b.x];
+
+		Vector3 aa_ = aaa.lerp(baa, t.x);
+		Vector3 ba_ = aba.lerp(bba, t.x);
+		Vector3 ab_ = aab.lerp(bab, t.x);
+		Vector3 bb_ = abb.lerp(bbb, t.x);
+
+		Vector3 a__ = aa_.lerp(ba_, t.y);
+		Vector3 b__ = ab_.lerp(bb_, t.y);
+
+		return a__.lerp(b__, t.z);
+	}
+
+	Vector3 lattice_get_smooth(const Vector3 &coord) {
+		Vector3 resm1 = lattice_res - Vector3(1, 1, 1);
+
+		Vector3 coord_mod = (coord / lattice_size + Vector3(0.5, 0.5, 0.5)) * resm1;
+		Vector3 cf = coord_mod.floor();
+
+		Vector3i a = Vector3i(cf).clamp(Vector3i(), resm1);
+		Vector3i b = Vector3i(cf + Vector3(1, 1, 1)).clamp(Vector3i(), resm1);
+
+		Vector3 t = (coord_mod - cf).clamp(Vector3(), Vector3(1, 1, 1));
+
+		return lattice_get_i_interp_3d(a, b, t);
+	}
+
+	void lattice_get_weights(const Vector3 &coord, float amount, HashMap<Vector3i, real_t> &weights, HashMap<Vector3i, int> &counts) {
+		Vector3 resm1 = lattice_res - Vector3(1, 1, 1);
+
+		Vector3 coord_mod = (coord / lattice_size) * resm1 + resm1 * 0.5;
+		Vector3 cf = coord_mod.floor();
+
+		Vector3i a = Vector3i(cf).clamp(Vector3i(), resm1);
+		Vector3i b = Vector3i(cf + Vector3(1, 1, 1)).clamp(Vector3i(), resm1);
+
+		Vector3 t = (coord_mod - cf).clamp(Vector3(), Vector3(1, 1, 1));
+
+		for (int z = a.z; z <= b.z; ++z) {
+			float w_z = Math::lerp(a.z - z + 1, z - a.z, t.z);
+			for (int y = a.y; y <= b.y; ++y) {
+				float w_y = Math::lerp(a.y - y + 1, y - a.y, t.y) * w_z;
+				for (int x = a.x; x <= b.x; ++x) {
+					float w = Math::lerp(a.x - x + 1, x - a.x, t.x) * w_y;
+					Vector3i vec(x, y, z);
+
+					if (!weights.has(vec)) {
+						weights[vec] = 0.0;
+						counts[vec] = 0;
+					}
+
+					weights[vec] = real_t(weights[vec]) + (w * amount);
+					counts[vec] = real_t(counts[vec]) + 1;
+				}
+			}
+		}
+	}
+
+	Vector3 lattice_get_i_interp_1d(const Vector3i &c1, const Vector3i &c2, float t) {
+		Vector3 res = lattice_res;
+
+		Vector3 a = lattice[c1.z * res.x * res.y + c1.y * res.x + c1.x];
+		Vector3 b = lattice[c2.z * res.x * res.y + c2.y * res.x + c2.x];
+
+		Vector3 d = c2 - c1;
+
+		Vector3i c0 = (c1 - d).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+		Vector3i c3 = (c2 + d).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+
+		Vector3 pre = lattice[c0.z * res.x * res.y + c0.y * res.x + c0.x];
+		Vector3 post = lattice[c3.z * res.x * res.y + c3.y * res.x + c3.x];
+
+		return a.cubic_interpolate(b, pre, post, t);
+	}
+
+	Vector3 lattice_get_i_interp_2d(const Vector3i &c1, const Vector3i &c2, float tx, float ty) {
+		Vector3 res = lattice_res;
+
+		Vector3i dy = (c2 - c1) * Vector3i(0, 1, 0);
+
+		Vector3 a = lattice_get_i_interp_1d(c1, c2 - dy, tx);
+		Vector3 b = lattice_get_i_interp_1d(c1 + dy, c2, tx);
+
+		Vector3i c0_a = (c1 - dy).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+		Vector3i c0_b = (c2 - dy - dy).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+
+		Vector3i c1_a = (c1 + dy + dy).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+		Vector3i c1_b = (c2 + dy).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+
+		Vector3 pre = lattice_get_i_interp_1d(c0_a, c0_b, tx);
+		Vector3 post = lattice_get_i_interp_1d(c1_a, c1_b, tx);
+
+		return a.cubic_interpolate(b, pre, post, ty);
+	}
+
+	Vector3 lattice_get_i_interp_3d(const Vector3i &c1, const Vector3i &c2, const Vector3 &tv) {
+		Vector3 res = lattice_res;
+
+		Vector3i dz = (c2 - c1) * Vector3i(0, 0, 1);
+
+		Vector3 a = lattice_get_i_interp_2d(c1, c2 - dz, tv.x, tv.y);
+		Vector3 b = lattice_get_i_interp_2d(c1 + dz, c2, tv.x, tv.y);
+
+		Vector3i c0_a = (c1 - dz).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+		Vector3i c0_b = (c2 - dz - dz).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+
+		Vector3i c1_a = (c1 + dz + dz).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+		Vector3i c1_b = (c2 + dz).clamp(Vector3i(), res - Vector3i(1, 1, 1));
+
+		Vector3 pre = lattice_get_i_interp_2d(c0_a, c0_b, tv.x, tv.y);
+		Vector3 post = lattice_get_i_interp_2d(c1_a, c1_b, tv.x, tv.y);
+
+		return a.cubic_interpolate(b, pre, post, tv.z);
+	}
+
+	void build_lattice() {
+		int size = lattice_res.x * lattice_res.y * lattice_res.z;
+
+		lattice.clear();
+		lattice.resize(size);
+
+		for (int i = 0; i < size; ++i) {
+			lattice.write[i] = Vector3();
+		}
+	}
+
+	void begin_operation() {
+		start_lattice = lattice.duplicate();
+	}
+
+	void end_operation() {
+		start_lattice.resize(0);
+	}
+
+	PackedVector3Array get_lattice_diff() {
+		PackedVector3Array ret = start_lattice.duplicate();
+		for (int lattice_i = 0; lattice_i < ret.size(); lattice_i++) {
+			ret.set(lattice_i, lattice[lattice_i] - ret[lattice_i]);
+		}
+		return ret;
+	}
+
+	void add_lattice(const PackedVector3Array &p_lattice, float sign) {
+		ERR_FAIL_COND(p_lattice.size() > lattice.size());
+
+		for (int i = 0; i < p_lattice.size(); i++) {
+			Vector3 new_lattice = p_lattice[i];
+			lattice.set(i, p_lattice[i] + new_lattice * sign);
+		}
+		_mesh_changed();
+	}
+
+	void affect_lattice(const Vector3 &where, float radius, const Vector3 &normal, float delta, const String &mode) {
+		CSGBrush *mesh_brush = _get_brush();
+		if (!mesh_brush) {
+			return;
+		}
+		HashMap<Vector3i, real_t> hit_lattice_weights;
+		HashMap<Vector3i, int> hit_lattice_counts;
+		int closest_i = -1;
+		float closest_dist = 10000000000.0;
+		CSGBrush::Face *closest_face = nullptr; // Store the closest face
+		int closest_v = -1; // Store the vertex index of the closest vertex
+		for (int f = 0; f < mesh_brush->faces.size(); ++f) {
+			CSGBrush::Face &face = mesh_brush->faces.write[f];
+			for (int v = 0; v < 3; ++v) {
+				Vector3 vert = face.vertices[v];
+				Vector3 diff = (vert - where) / radius;
+				float dist = diff.length_squared();
+				if (dist < closest_dist) {
+					closest_dist = dist;
+					closest_i = f * 3 + v;
+					closest_face = &face; // Update the closest face
+					closest_v = v; // Update the vertex index
+				}
+				float l = 1.0 - dist;
+				l = MAX(0, l);
+				l *= l;
+				if (l > 0.0) {
+					Vector3 original_vert = face.vertices[v];
+					lattice_get_weights(original_vert, l, hit_lattice_weights, hit_lattice_counts);
+				}
+			}
+		}
+
+		// ensure the minimum weight is at least 1.0
+		float max_weight = 0.0;
+		for (KeyValue<Vector3i, real_t> coord : hit_lattice_weights) {
+			max_weight = MAX(max_weight, (hit_lattice_weights[coord.key] / hit_lattice_counts[coord.key]));
+		}
+		if (max_weight > 0.0) {
+			max_weight = 1.0 / MIN(max_weight, 1.0);
+		} else {
+			if (closest_i >= 0 && closest_face != nullptr) { // Check if a closest vertex was found
+				Vector3 original_vert = closest_face->vertices[closest_v]; // Use the stored face and vertex index
+				lattice_get_weights(original_vert, 1.0, hit_lattice_weights, hit_lattice_counts);
+
+				max_weight = 1.0;
+			}
+		}
+
+		Vector3 res = lattice_res;
+		Vector3 avg_deform;
+		float avg_deform_weight = 0.0;
+
+		for (KeyValue<Vector3i, real_t> coord : hit_lattice_weights) {
+			hit_lattice_weights[coord.key] *= max_weight;
+			if (mode == "Smooth" || mode == "Relax" || mode == "Average") {
+				float weight = hit_lattice_weights[coord.key];
+				avg_deform_weight += weight;
+				int index = coord.key.z * res.x * res.y + coord.key.y * res.x + coord.key.x;
+				avg_deform += lattice[index] * weight;
+			}
+		}
+
+		if (avg_deform_weight > 0.0) {
+			avg_deform /= avg_deform_weight;
+		}
+
+		for (KeyValue<Vector3i, real_t> coord : hit_lattice_weights) {
+			float weight = hit_lattice_weights[coord.key] / hit_lattice_counts[coord.key];
+			int index = coord.key.z * res.x * res.y + coord.key.y * res.x + coord.key.x;
+			if (mode == "Grow") {
+				lattice.write[index] += normal * weight * delta;
+			} else if (mode == "Erase") {
+				Vector3 erased = lattice[index].lerp(Vector3(), 1.0 - pow(0.5, abs(delta) * weight * 10.0));
+				if (delta > 0.0) {
+					lattice.write[index] = erased;
+				} else {
+					lattice.write[index] = lattice[index].lerp(erased, -1.0);
+				}
+			} else if (mode == "Smooth" || mode == "Relax" || mode == "Average") {
+				Vector3 smoothed = lattice[index].lerp(avg_deform, 1.0 - pow(0.5, abs(delta) * weight * 10.0));
+				Vector3 diff = smoothed - lattice[index];
+				if (mode == "Smooth") {
+					diff = diff.project(normal);
+				} else if (mode == "Relax") {
+					diff = diff.slide(normal);
+				}
+				if (delta > 0.0) {
+					lattice.write[index] += diff;
+				} else {
+					lattice.write[index] -= diff;
+				}
+			}
+		}
+		_mesh_changed();
+	}
+
+	Vector3 translate_coord(const Vector3 &coord, bool force_fast = false) {
+		if (smooth && !force_fast) {
+			return coord + lattice_get_smooth(coord);
+		} else {
+			return coord + lattice_get_fast(coord);
+		}
+	}
+
+	Vector3 get_normal_at_coordinate(const Vector3 &c, const Vector3 &n) {
+		Vector3 y = n.cross(Vector3(n.y, n.z, -n.x));
+		Vector3 x = n.cross(y);
+		Vector3 s = lattice_size / Vector3(lattice_res) / 2.0; // * (0.5 if smooth else 1.0)
+		Vector3 tan = (translate_coord(c + x * s, true) - translate_coord(c - x * s, true));
+		Vector3 bitan = (translate_coord(c + y * s, true) - translate_coord(c - y * s, true));
+		return -tan.cross(bitan).normalized();
+	}
+
+	void randomize_lattice() {
+		float s = 0.1;
+		Ref<RandomNumberGenerator> random_generator;
+		random_generator.instantiate();
+
+		for (int i = 0; i < lattice.size(); ++i) {
+			random_generator->set_seed(HashMapHasherDefault::hash(i) + OS::get_singleton()->get_ticks_usec());
+			lattice.write[i] = Vector3(random_generator->randf_range(-s, s), random_generator->randf_range(-s, s), random_generator->randf_range(-s, s));
+		}
+	}
+
+protected:
+	static void _bind_methods() {
+		ClassDB::bind_method(D_METHOD("set_lattice", "value"), &CSGDeform3D::set_lattice);
+		ClassDB::bind_method(D_METHOD("get_lattice"), &CSGDeform3D::get_lattice);
+
+		ADD_PROPERTY(PropertyInfo(Variant::PACKED_VECTOR3_ARRAY, "lattice",PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_lattice", "get_lattice");
+
+		ClassDB::bind_method(D_METHOD("set_lattice_size", "value"), &CSGDeform3D::set_lattice_size);
+		ClassDB::bind_method(D_METHOD("get_lattice_size"), &CSGDeform3D::get_lattice_size);
+		ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "lattice_size"), "set_lattice_size", "get_lattice_size");
+
+		ClassDB::bind_method(D_METHOD("set_lattice_res", "value"), &CSGDeform3D::set_lattice_res);
+		ClassDB::bind_method(D_METHOD("get_lattice_res"), &CSGDeform3D::get_lattice_res);
+		ADD_PROPERTY(PropertyInfo(Variant::VECTOR3I, "lattice_res"), "set_lattice_res", "get_lattice_res");
+
+		ClassDB::bind_method(D_METHOD("set_fix_normals", "value"), &CSGDeform3D::set_fix_normals);
+		ClassDB::bind_method(D_METHOD("get_fix_normals"), &CSGDeform3D::get_fix_normals);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "fix_normals"), "set_fix_normals", "get_fix_normals");
+
+		ClassDB::bind_method(D_METHOD("set_smooth", "value"), &CSGDeform3D::set_smooth);
+		ClassDB::bind_method(D_METHOD("get_smooth"), &CSGDeform3D::get_smooth);
+		ADD_PROPERTY(PropertyInfo(Variant::BOOL, "smooth"), "set_smooth", "get_smooth");
+
+		ClassDB::bind_method(D_METHOD("lattice_get_fast", "coord"), &CSGDeform3D::lattice_get_fast);
+		ClassDB::bind_method(D_METHOD("lattice_get_smooth", "coord"), &CSGDeform3D::lattice_get_smooth);
+		// ClassDB::bind_method(D_METHOD("lattice_get_weights", "coord", "amount", "weights", "counts"), &CSGDeform3D::lattice_get_weights);
+		ClassDB::bind_method(D_METHOD("lattice_get_i_interp_1d", "c1", "c2", "t"), &CSGDeform3D::lattice_get_i_interp_1d);
+		ClassDB::bind_method(D_METHOD("lattice_get_i_interp_2d", "c1", "c2", "tx", "ty"), &CSGDeform3D::lattice_get_i_interp_2d);
+		ClassDB::bind_method(D_METHOD("lattice_get_i_interp_3d", "c1", "c2", "tv"), &CSGDeform3D::lattice_get_i_interp_3d);
+		ClassDB::bind_method(D_METHOD("build_lattice"), &CSGDeform3D::build_lattice);
+		ClassDB::bind_method(D_METHOD("begin_operation"), &CSGDeform3D::begin_operation);
+		ClassDB::bind_method(D_METHOD("end_operation"), &CSGDeform3D::end_operation);
+		ClassDB::bind_method(D_METHOD("get_lattice_diff"), &CSGDeform3D::get_lattice_diff);
+		ClassDB::bind_method(D_METHOD("add_lattice", "lattice", "sign"), &CSGDeform3D::add_lattice);
+		ClassDB::bind_method(D_METHOD("affect_lattice", "where", "radius", "normal", "delta", "mode"), &CSGDeform3D::affect_lattice, DEFVAL(Vector3(0, 0, 0)));
+		ClassDB::bind_method(D_METHOD("translate_coord", "coord", "force_fast"), &CSGDeform3D::translate_coord);
+		ClassDB::bind_method(D_METHOD("get_normal_at_coord", "coordinate", "normal"), &CSGDeform3D::get_normal_at_coordinate);
+		ClassDB::bind_method(D_METHOD("randomize_lattice"), &CSGDeform3D::randomize_lattice);
+	}
+
+	virtual CSGBrush *_build_brush() override {
+		set_use_collision(true);
+		int capacity = lattice_res.x * lattice_res.y * lattice_res.z;
+		if (lattice.size() != capacity) {
+			lattice.resize(capacity);
+			build_lattice();
+		}
+		CSGBrush *mesh_brush = CSGMesh3D::_build_brush();
+		for (int f = 0; f < mesh_brush->faces.size(); ++f) {
+			CSGBrush::Face &face = mesh_brush->faces.write[f];
+			for (int v = 0; v < 3; ++v) {
+				face.vertices[v] = translate_coord(face.vertices[v]);
+			}
+		}
+		return mesh_brush;
+	}
 };
 
 class CSGSphere3D : public CSGPrimitive3D {
