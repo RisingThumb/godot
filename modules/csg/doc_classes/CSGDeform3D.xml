@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSGDeform3D" inherits="CSGMesh3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_lattice">
+			<return type="void" />
+			<param index="0" name="lattice" type="PackedVector3Array" />
+			<param index="1" name="sign" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="affect_lattice">
+			<return type="void" />
+			<param index="0" name="where" type="Vector3" />
+			<param index="1" name="radius" type="float" />
+			<param index="2" name="normal" type="Vector3" />
+			<param index="3" name="delta" type="float" />
+			<param index="4" name="mode" type="String" default="Vector3(0, 0, 0)" />
+			<description>
+			</description>
+		</method>
+		<method name="begin_operation">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="build_lattice">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="end_operation">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="get_lattice_diff">
+			<return type="PackedVector3Array" />
+			<description>
+			</description>
+		</method>
+		<method name="get_normal_at_coord">
+			<return type="Vector3" />
+			<param index="0" name="coordinate" type="Vector3" />
+			<param index="1" name="normal" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="lattice_get_fast">
+			<return type="Vector3" />
+			<param index="0" name="coord" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="lattice_get_i_interp_1d">
+			<return type="Vector3" />
+			<param index="0" name="c1" type="Vector3i" />
+			<param index="1" name="c2" type="Vector3i" />
+			<param index="2" name="t" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="lattice_get_i_interp_2d">
+			<return type="Vector3" />
+			<param index="0" name="c1" type="Vector3i" />
+			<param index="1" name="c2" type="Vector3i" />
+			<param index="2" name="tx" type="float" />
+			<param index="3" name="ty" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="lattice_get_i_interp_3d">
+			<return type="Vector3" />
+			<param index="0" name="c1" type="Vector3i" />
+			<param index="1" name="c2" type="Vector3i" />
+			<param index="2" name="tv" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="lattice_get_smooth">
+			<return type="Vector3" />
+			<param index="0" name="coord" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="randomize_lattice">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="translate_coord">
+			<return type="Vector3" />
+			<param index="0" name="coord" type="Vector3" />
+			<param index="1" name="force_fast" type="bool" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="fix_normals" type="bool" setter="set_fix_normals" getter="get_fix_normals" default="true">
+		</member>
+		<member name="lattice" type="PackedVector3Array" setter="set_lattice" getter="get_lattice" default="PackedVector3Array()">
+		</member>
+		<member name="lattice_res" type="Vector3i" setter="set_lattice_res" getter="get_lattice_res" default="Vector3i(9, 9, 9)">
+		</member>
+		<member name="lattice_size" type="Vector3" setter="set_lattice_size" getter="get_lattice_size" default="Vector3(2, 2, 2)">
+		</member>
+		<member name="smooth" type="bool" setter="set_smooth" getter="get_smooth" default="false">
+		</member>
+	</members>
+</class>
