@@ -206,9 +206,9 @@ func _process(delta : float) -> void:
 		edit_node = null
 	
 	if gridmesh_inst and edit_node:
-		if gridmesh_size != edit_node.lattice_res:
+		if gridmesh_size != edit_node.lattice_resolution:
 			var mesh := ArrayMesh.new()
-			var arrays := make_grid_arrays(edit_node.lattice_res)
+			var arrays := make_grid_arrays(edit_node.lattice_resolution)
 			var mat := gridmesh.surface_get_material(0)
 			gridmesh.clear_surfaces()
 			gridmesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
