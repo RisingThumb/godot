@@ -177,7 +177,7 @@ func _forward_3d_gui_input(viewport_camera : Camera3D, event : InputEvent) -> in
 				edit_node.begin_operation()
 				have_affected_lattice = false
 			else:
-				var diff: PackedVector3Array = edit_node.get_lattice_diff()
+				var diff: PackedVector3Array = edit_node.get_lattice_difference()
 				if have_affected_lattice:
 					var undo_redo := get_undo_redo()
 					undo_redo.create_action("CSGDeform Lattice Edit")
