@@ -39,12 +39,12 @@
 			<description>
 			</description>
 		</method>
-		<method name="get_lattice_diff">
+		<method name="get_lattice_difference">
 			<return type="PackedVector3Array" />
 			<description>
 			</description>
 		</method>
-		<method name="get_normal_at_coord">
+		<method name="get_normal_at_coordinate">
 			<return type="Vector3" />
 			<param index="0" name="coordinate" type="Vector3" />
 			<param index="1" name="normal" type="Vector3" />
@@ -106,7 +106,7 @@
 		</member>
 		<member name="lattice" type="PackedVector3Array" setter="set_lattice" getter="get_lattice" default="PackedVector3Array()">
 		</member>
-		<member name="lattice_res" type="Vector3i" setter="set_lattice_res" getter="get_lattice_res" default="Vector3i(9, 9, 9)">
+		<member name="lattice_resolution" type="Vector3i" setter="set_lattice_resolution" getter="get_lattice_resolution" default="Vector3i(9, 9, 9)">
 		</member>
 		<member name="lattice_size" type="Vector3" setter="set_lattice_size" getter="get_lattice_size" default="Vector3(2, 2, 2)">
 		</member>

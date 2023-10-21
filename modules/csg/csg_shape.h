@@ -593,7 +593,7 @@ protected:
 
 		ClassDB::bind_method(D_METHOD("set_lattice_resolution", "value"), &CSGDeform3D::set_lattice_resolution);
 		ClassDB::bind_method(D_METHOD("get_lattice_resolution"), &CSGDeform3D::get_lattice_resolution);
-		ADD_PROPERTY(PropertyInfo(Variant::VECTOR3I, "lattice_resolution"), "set_lattice_resolution", "get_lattice_res");
+		ADD_PROPERTY(PropertyInfo(Variant::VECTOR3I, "lattice_resolution"), "set_lattice_resolution", "get_lattice_resolution");
 
 		ClassDB::bind_method(D_METHOD("set_fix_normals", "value"), &CSGDeform3D::set_fix_normals);
 		ClassDB::bind_method(D_METHOD("get_fix_normals"), &CSGDeform3D::get_fix_normals);
