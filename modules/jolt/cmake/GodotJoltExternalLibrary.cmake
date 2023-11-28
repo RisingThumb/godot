@@ -188,11 +188,6 @@ function(gdj_add_external_library library_name library_configs)
 	# Set up the CMake arguments, most of which go through an "initial cache file" in order to defer
 	# evaluation of generator expressions to the external project
 
-	set(use_static_crt $<BOOL:${GDJ_STATIC_RUNTIME_LIBRARY}>)
-	set(msvcrt_debug $<$<CONFIG:${library_config_Debug},${library_config_EditorDebug}>:Debug>)
-	set(msvcrt_dll $<$<NOT:${use_static_crt}>:DLL>)
-	set(msvcrt MultiThreaded${msvcrt_debug}${msvcrt_dll})
-
 	if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
 		cmake_language(GET_MESSAGE_LOG_LEVEL log_level)
 	elseif(DEFINED CMAKE_MESSAGE_LOG_LEVEL)
@@ -213,7 +208,7 @@ function(gdj_add_external_library library_name library_configs)
 		-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE
 		-DCMAKE_POLICY_DEFAULT_CMP0069=NEW # Allows use of INTERPROCEDURAL_OPTIMIZATION
 		-DCMAKE_POLICY_DEFAULT_CMP0091=NEW # Allows use of MSVC_RUNTIME_LIBRARY
-		-DCMAKE_MSVC_RUNTIME_LIBRARY=${msvcrt}
+		-DCMAKE_POLICY_DEFAULT_CMP0126=NEW # Prevents `set(CACHE)` from overwriting variables
 		-DCMAKE_CXX_VISIBILITY_PRESET=hidden
 		${log_level_arg}
 		${arg_CMAKE_CACHE_ARGS}
@@ -227,8 +222,18 @@ function(gdj_add_external_library library_name library_configs)
 		)
 	endif()
 
-	if(CMAKE_HOST_SYSTEM_NAME STREQUAL Darwin)
+	if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+		set(use_static_crt $<BOOL:${GDJ_STATIC_RUNTIME_LIBRARY}>)
+		set(msvcrt_debug $<$<CONFIG:${library_config_Debug},${library_config_EditorDebug}>:Debug>)
+		set(msvcrt_dll $<$<NOT:${use_static_crt}>:DLL>)
+		set(msvcrt MultiThreaded${msvcrt_debug}${msvcrt_dll})
+
 		list(APPEND cmake_cache_args
+			-DCMAKE_MSVC_RUNTIME_LIBRARY=${msvcrt}
+		)
+	elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+		list(APPEND cmake_cache_args
+			-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
 			-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
 			-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
 		)
@@ -237,6 +242,14 @@ function(gdj_add_external_library library_name library_configs)
 	set(cache_file ${tmp_dir}/${library_name}-cache.cmake)
 	gdj_args_to_script(cache_file_content "${cmake_cache_args}")
 	file(CONFIGURE OUTPUT ${cache_file} CONTENT ${cache_file_content})
+
+	# We pass CMAKE_TOOLCHAIN_FILE through the command-line like normal just in case
+
+	if(DEFINED CMAKE_TOOLCHAIN_FILE)
+		set(toolchain_arg -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
+	else()
+		set(toolchain_arg "")
+	endif()
 
 	# We pass CMAKE_BUILD_TYPE through the command-line like normal since we need its generator
 	# expressions to evaluate here and not in the external project
@@ -259,10 +272,9 @@ function(gdj_add_external_library library_name library_configs)
 	# HACK(mihe): The `update` step target for external projects ends up running on every single
 	# build. This is slow and unnecessary, since we're referencing a specific commit anyway. To get
 	# around this we use `UPDATE_DISCONNECTED` to disconnect the `update` step target from the
-	# external project, and then we reconnect it later with a `DEPENDS` file. This does however
-	# require a recursive build, which Xcode doesn't like, so we can't use this workaround there.
+	# external project.
 
-	if(CMAKE_GENERATOR STREQUAL Xcode)
+	if(${CMAKE_VERSION} VERSION_LESS 3.27)
 		set(disconnect_update FALSE)
 	else()
 		set(disconnect_update TRUE)
@@ -276,6 +288,7 @@ function(gdj_add_external_library library_name library_configs)
 		SOURCE_SUBDIR ${arg_SOURCE_SUBDIR}
 		CONFIGURE_COMMAND ${configure_command}
 			-C ${cache_file}
+			${toolchain_arg}
 			${build_type_arg}
 		BUILD_COMMAND ${CMAKE_COMMAND}
 			--build <BINARY_DIR>
@@ -285,41 +298,18 @@ function(gdj_add_external_library library_name library_configs)
 		BUILD_BYPRODUCTS ${output_dir_current}/${output_name_current}
 		EXCLUDE_FROM_ALL TRUE # These will always be dependencies anyway
 		UPDATE_DISCONNECTED ${disconnect_update} # See extra steps below
-		STEP_TARGETS update # See extra steps below
 	)
 
 	# Ensure that the external project runs its `configure` step if the cache file created above
-	# ever changes, by adding an empty custom step that depends on that file and sits inbetween
-	# `patch` and `configure`
+	# ever changes, by adding an empty custom step that depends on that file and which is hooked up
+	# so that the `configure` step is dependent upon it.
 
-	ExternalProject_Add_Step(${library_name} configure-if-different
+	ExternalProject_Add_Step(${library_name} configure-if-changed
 		COMMAND ""
 		DEPENDS ${cache_file}
-		DEPENDEES patch
 		DEPENDERS configure
+		EXCLUDE_FROM_MAIN TRUE
 	)
-
-	if(disconnect_update)
-		# Ensure that the external project runs its (now disconnected) `update` step if the Git
-		# commit ever changes, by writing it to a file at configure-time and adding that file as a
-		# dependency to a custom step that explicitly invokes the `update` step target. This custom
-		# step sits inbetween `download` and `configure`, just like `update` did before it was
-		# disconnected.
-
-		set(commit_file ${stamp_dir}/${library_name}-gitcommit.txt)
-		set(commit_file_content ${arg_GIT_COMMIT})
-		file(CONFIGURE OUTPUT ${commit_file} CONTENT ${commit_file_content})
-
-		ExternalProject_Add_Step(${library_name} update-if-different
-			COMMAND ${CMAKE_COMMAND}
-				--build ${CMAKE_CURRENT_BINARY_DIR}
-				--config $<CONFIG>
-				--target ${library_name}-update
-			DEPENDS ${commit_file}
-			DEPENDEES download
-			DEPENDERS configure
-		)
-	endif()
 
 	# Declare the shim library that we will consume in the end
 

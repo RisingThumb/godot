@@ -2,6 +2,8 @@
 
 #include "objects/jolt_object_impl_3d.hpp"
 
+class JoltBodyImpl3D;
+
 class JoltAreaImpl3D final : public JoltObjectImpl3D {
 	struct BodyIDHasher {
 		static uint32_t hash(const JPH::BodyID& p_id) {
@@ -52,6 +54,8 @@ class JoltAreaImpl3D final : public JoltObjectImpl3D {
 public:
 	using OverrideMode = PhysicsServer3D::AreaSpaceOverrideMode;
 
+	JoltAreaImpl3D();
+
 	Variant get_param(PhysicsServer3D::AreaParameter p_param) const;
 
 	void set_param(PhysicsServer3D::AreaParameter p_param, const Variant& p_value);
@@ -64,15 +68,21 @@ public:
 
 	void set_area_monitor_callback(const Callable& p_callback);
 
-	bool is_monitoring() const {
-		return has_body_monitor_callback() || has_area_monitor_callback();
-	}
-
 	bool is_monitorable() const { return monitorable; }
 
 	void set_monitorable(bool p_monitorable, bool p_lock = true);
 
-	bool generates_contacts() const override { return is_monitoring(); }
+	bool can_monitor(const JoltBodyImpl3D& p_other) const;
+
+	bool can_monitor(const JoltAreaImpl3D& p_other) const;
+
+	bool can_interact_with(const JoltBodyImpl3D& p_other) const;
+
+	bool can_interact_with(const JoltAreaImpl3D& p_other) const;
+
+	Vector3 get_velocity_at_position(const Vector3& p_position, bool p_lock = true) const override;
+
+	bool generates_contacts() const override { return false; }
 
 	bool is_point_gravity() const { return point_gravity; }
 
@@ -195,7 +205,11 @@ private:
 
 	void _force_areas_exited(bool p_remove, bool p_lock = true);
 
+	void _update_group_filter(bool p_lock = true);
+
 	void _space_changing(bool p_lock = true) override;
+
+	void _space_changed(bool p_lock = true) override;
 
 	void _body_monitoring_changed();
 

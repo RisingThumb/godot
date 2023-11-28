@@ -94,8 +94,8 @@ private:
 	bool _is_listening_for(const JPH::Body& p_body) const;
 
 	bool _try_override_collision_response(
-		const JPH::Body& p_body1,
-		const JPH::Body& p_body2,
+		const JPH::Body& p_jolt_body1,
+		const JPH::Body& p_jolt_body2,
 		JPH::ContactSettings& p_settings
 	);
 
@@ -112,7 +112,7 @@ private:
 		JPH::ContactSettings& p_settings
 	);
 
-	bool _try_add_area_overlap(
+	bool _try_evaluate_area_overlap(
 		const JPH::Body& p_body1,
 		const JPH::Body& p_body2,
 		const JPH::ContactManifold& p_manifold
@@ -123,7 +123,11 @@ private:
 	bool _try_remove_area_overlap(const JPH::SubShapeIDPair& p_shape_pair);
 
 #ifdef GDJ_CONFIG_EDITOR
-	bool _try_add_debug_contacts(const JPH::ContactManifold& p_manifold);
+	bool _try_add_debug_contacts(
+		const JPH::Body& p_body1,
+		const JPH::Body& p_body2,
+		const JPH::ContactManifold& p_manifold
+	);
 #endif // GDJ_CONFIG_EDITOR
 
 	void _flush_contacts();

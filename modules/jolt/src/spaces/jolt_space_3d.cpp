@@ -4,6 +4,8 @@
 #include "objects/jolt_area_impl_3d.hpp"
 #include "objects/jolt_body_impl_3d.hpp"
 #include "servers/jolt_project_settings.hpp"
+#include "shapes/jolt_custom_shape_type.hpp"
+#include "shapes/jolt_shape_impl_3d.hpp"
 #include "spaces/jolt_contact_listener_3d.hpp"
 #include "spaces/jolt_layer_mapper.hpp"
 #include "spaces/jolt_physics_direct_space_state_3d.hpp"
@@ -72,6 +74,18 @@ JoltSpace3D::JoltSpace3D(JPH::JobSystem* p_job_system)
 			return clamp(p_body1.GetRestitution() + p_body2.GetRestitution(), 0.0f, 1.0f);
 		}
 	);
+
+#ifdef GDJ_CONFIG_EDITOR
+	// HACK(mihe): The `EditorLog` class gets initialized fairly late in the application flow, so if
+	// we do this any earlier the warning is only ever going to be emitted to stdout and not the
+	// editor log, hence why this is here.
+	if (JoltProjectSettings::should_run_on_separate_thread()) {
+		WARN_PRINT_ONCE(
+			"Running on a separate thread is not currently supported by Godot Jolt. "
+			"Any such setting will be ignored."
+		);
+	}
+#endif // GDJ_CONFIG_EDITOR
 }
 
 JoltSpace3D::~JoltSpace3D() {
@@ -87,37 +101,40 @@ void JoltSpace3D::step(float p_step) {
 
 	_pre_step(p_step);
 
-	switch (physics_system->Update(p_step, 1, temp_allocator, job_system)) {
-		case JPH::EPhysicsUpdateError::None: {
-			// All good!
-		} break;
+	const JPH::EPhysicsUpdateError
+		update_error = physics_system->Update(p_step, 1, temp_allocator, job_system);
 
-		case JPH::EPhysicsUpdateError::ManifoldCacheFull: {
-			WARN_PRINT_ONCE(vformat(
-				"Jolt's manifold cache exceeded capacity and contacts were ignored. "
-				"Consider increasing maximum number of contact constraints in project settings. "
-				"Maximum number of contact constraints is currently set to %d.",
-				JoltProjectSettings::get_max_contact_constraints()
-			));
-		} break;
+	if ((update_error & JPH::EPhysicsUpdateError::ManifoldCacheFull) !=
+		JPH::EPhysicsUpdateError::None)
+	{
+		WARN_PRINT_ONCE(vformat(
+			"Jolt's manifold cache exceeded capacity and contacts were ignored. "
+			"Consider increasing maximum number of contact constraints in project settings. "
+			"Maximum number of contact constraints is currently set to %d.",
+			JoltProjectSettings::get_max_contact_constraints()
+		));
+	}
 
-		case JPH::EPhysicsUpdateError::BodyPairCacheFull: {
-			WARN_PRINT_ONCE(vformat(
-				"Jolt's body pair cache exceeded capacity and contacts were ignored. "
-				"Consider increasing maximum number of body pairs in project settings. "
-				"Maximum number of body pairs is currently set to %d.",
-				JoltProjectSettings::get_max_body_pairs()
-			));
-		} break;
+	if ((update_error & JPH::EPhysicsUpdateError::BodyPairCacheFull) !=
+		JPH::EPhysicsUpdateError::None)
+	{
+		WARN_PRINT_ONCE(vformat(
+			"Jolt's body pair cache exceeded capacity and contacts were ignored. "
+			"Consider increasing maximum number of body pairs in project settings. "
+			"Maximum number of body pairs is currently set to %d.",
+			JoltProjectSettings::get_max_body_pairs()
+		));
+	}
 
-		case JPH::EPhysicsUpdateError::ContactConstraintsFull: {
-			WARN_PRINT_ONCE(vformat(
-				"Jolt's contact constraint buffer exceeded capacity and contacts were ignored. "
-				"Consider increasing maximum number of contact constraints in project settings. "
-				"Maximum number of contact constraints is currently set to %d.",
-				JoltProjectSettings::get_max_contact_constraints()
-			));
-		} break;
+	if ((update_error & JPH::EPhysicsUpdateError::ContactConstraintsFull) !=
+		JPH::EPhysicsUpdateError::None)
+	{
+		WARN_PRINT_ONCE(vformat(
+			"Jolt's contact constraint buffer exceeded capacity and contacts were ignored. "
+			"Consider increasing maximum number of contact constraints in project settings. "
+			"Maximum number of contact constraints is currently set to %d.",
+			JoltProjectSettings::get_max_contact_constraints()
+		));
 	}
 
 	_post_step(p_step);
@@ -377,6 +394,57 @@ void JoltSpace3D::remove_joint(JoltJointImpl3D* p_joint) {
 }
 
 #ifdef GDJ_CONFIG_EDITOR
+
+void JoltSpace3D::dump_debug_snapshot(const String& p_dir) {
+	const Dictionary datetime = Time::get_singleton()->get_datetime_dict_from_system();
+
+	const String datetime_str = vformat(
+		"%04d-%02d-%02d_%02d-%02d-%02d",
+		datetime["year"],
+		datetime["month"],
+		datetime["day"],
+		datetime["hour"],
+		datetime["minute"],
+		datetime["second"]
+	);
+
+	const String path = p_dir + vformat("/jolt_snapshot_%s_%d.bin", datetime_str, rid.get_id());
+
+	Ref<FileAccess> file_access = FileAccess::open(path, FileAccess::ModeFlags::WRITE);
+
+	ERR_FAIL_NULL_MSG(
+		file_access,
+		vformat(
+			"Failed to open '%s' for writing when saving snapshot of physics space with RID '%d'.",
+			path,
+			rid.get_id()
+		)
+	);
+
+	JPH::PhysicsScene physics_scene;
+	physics_scene.FromPhysicsSystem(physics_system);
+
+	for (JPH::BodyCreationSettings& body : physics_scene.GetBodies()) {
+		body.SetShape(JoltShapeImpl3D::without_custom_shapes(body.GetShape()));
+	}
+
+	JoltStreamOutWrapper output_stream(file_access);
+	physics_scene.SaveBinaryState(output_stream, true, false);
+
+	ERR_FAIL_COND_MSG(
+		file_access->get_error() != OK,
+		vformat(
+			"Writing snapshot of physics space with RID '%d' to '%s' failed with error '%s'.",
+			rid.get_id(),
+			path,
+			UtilityFunctions::error_string(file_access->get_error())
+		)
+	);
+
+	UtilityFunctions::print(
+		vformat("Snapshot of physics space with RID '%d' saved to '%s'.", rid.get_id(), path)
+	);
+}
 
 const PackedVector3Array& JoltSpace3D::get_debug_contacts() const {
 	return contact_listener->get_debug_contacts();

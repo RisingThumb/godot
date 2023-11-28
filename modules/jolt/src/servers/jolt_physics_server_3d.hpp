@@ -82,6 +82,10 @@ private:
 	static void _bind_methods();
 
 public:
+	JoltPhysicsServer3D();
+
+	~JoltPhysicsServer3D() override;
+
 	RID _world_boundary_shape_create() override;
 
 	RID _separation_ray_shape_create() override;
@@ -635,6 +639,12 @@ public:
 
 	JoltJointImpl3D* get_joint(const RID& p_rid) const { return joint_owner.get_or_null(p_rid); }
 
+#ifdef GDJ_CONFIG_EDITOR
+	void dump_debug_snapshots(const String& p_dir);
+
+	void space_dump_debug_snapshot(const RID& p_space, const String& p_dir);
+#endif // GDJ_CONFIG_EDITOR
+
 	bool joint_get_enabled(const RID& p_joint) const;
 
 	void joint_set_enabled(const RID& p_joint, bool p_enabled);
@@ -790,13 +800,13 @@ private:
 	bool flushing_queries = false;
 };
 
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::HingeJointParamJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::HingeJointFlagJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::SliderJointParamJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::SliderJointFlagJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::ConeTwistJointParamJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::ConeTwistJointFlagJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::G6DOFJointAxisParamJolt);
-VARIANT_ENUM_CAST(JoltPhysicsServer3D::G6DOFJointAxisFlagJolt);
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::HingeJointParamJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::HingeJointFlagJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::SliderJointParamJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::SliderJointFlagJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::ConeTwistJointParamJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::ConeTwistJointFlagJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::G6DOFJointAxisParamJolt)
+VARIANT_ENUM_CAST(JoltPhysicsServer3D::G6DOFJointAxisFlagJolt)
 
 #endif

@@ -2,6 +2,7 @@
 
 #include "joints/jolt_joint_impl_3d.hpp"
 #include "objects/jolt_area_impl_3d.hpp"
+#include "objects/jolt_group_filter.hpp"
 #include "objects/jolt_physics_direct_body_state_3d.hpp"
 #include "servers/jolt_project_settings.hpp"
 #include "spaces/jolt_broad_phase_layer.hpp"
@@ -38,6 +39,9 @@ bool integrate(TValue& p_value, PhysicsServer3D::AreaSpaceOverrideMode p_mode, T
 }
 
 } // namespace
+
+JoltBodyImpl3D::JoltBodyImpl3D()
+	: JoltObjectImpl3D(JoltObjectImpl3D::OBJECT_TYPE_BODY) { }
 
 JoltBodyImpl3D::~JoltBodyImpl3D() {
 	memdelete_safely(direct_state);
@@ -246,7 +250,15 @@ void JoltBodyImpl3D::set_can_sleep(bool p_enabled, bool p_lock) {
 }
 
 Basis JoltBodyImpl3D::get_principal_inertia_axes(bool p_lock) const {
-	ERR_FAIL_NULL_D(space);
+	ERR_FAIL_NULL_D_MSG(
+		space,
+		vformat(
+			"Failed to retrieve principal inertia axes of '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
 
 	if (is_static() || is_kinematic()) {
 		return {};
@@ -265,7 +277,15 @@ Basis JoltBodyImpl3D::get_principal_inertia_axes(bool p_lock) const {
 }
 
 Vector3 JoltBodyImpl3D::get_inverse_inertia(bool p_lock) const {
-	ERR_FAIL_NULL_D(space);
+	ERR_FAIL_NULL_D_MSG(
+		space,
+		vformat(
+			"Failed to retrieve inverse inertia of '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
 
 	if (is_static() || is_kinematic()) {
 		return {};
@@ -278,7 +298,15 @@ Vector3 JoltBodyImpl3D::get_inverse_inertia(bool p_lock) const {
 }
 
 Basis JoltBodyImpl3D::get_inverse_inertia_tensor(bool p_lock) const {
-	ERR_FAIL_NULL_D(space);
+	ERR_FAIL_NULL_D_MSG(
+		space,
+		vformat(
+			"Failed to retrieve inverse inertia tensor of '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
 
 	if (is_static() || is_kinematic()) {
 		return {};
@@ -353,6 +381,33 @@ void JoltBodyImpl3D::set_axis_velocity(const Vector3& p_axis_velocity, bool p_lo
 
 		_motion_changed(false);
 	}
+}
+
+Vector3 JoltBodyImpl3D::get_velocity_at_position(const Vector3& p_position, bool p_lock) const {
+	ERR_FAIL_NULL_D_MSG(
+		space,
+		vformat(
+			"Failed to retrieve point velocity for '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
+	const JoltReadableBody3D body = space->read_body(jolt_id, p_lock);
+	ERR_FAIL_COND_D(body.is_invalid());
+
+	const JPH::MotionProperties& motion_properties = *body->GetMotionPropertiesUnchecked();
+
+	const Vector3 total_linear_velocity = to_godot(motion_properties.GetLinearVelocity()) +
+		linear_surface_velocity;
+
+	const Vector3 total_angular_velocity = to_godot(motion_properties.GetAngularVelocity()) +
+		angular_surface_velocity;
+
+	const Vector3 com_to_pos = p_position - to_godot(body->GetCenterOfMassPosition());
+
+	return total_linear_velocity + total_angular_velocity.cross(com_to_pos);
 }
 
 void JoltBodyImpl3D::set_center_of_mass_custom(const Vector3& p_center_of_mass, bool p_lock) {
@@ -430,7 +485,16 @@ void JoltBodyImpl3D::reset_mass_properties(bool p_lock) {
 }
 
 void JoltBodyImpl3D::apply_force(const Vector3& p_force, const Vector3& p_position, bool p_lock) {
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_MSG(
+		space,
+		vformat(
+			"Failed to apply force to '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
 	QUIET_FAIL_COND(!is_rigid());
 
 	if (custom_integrator || p_force == Vector3()) {
@@ -440,13 +504,22 @@ void JoltBodyImpl3D::apply_force(const Vector3& p_force, const Vector3& p_positi
 	const JoltWritableBody3D body = space->write_body(jolt_id, p_lock);
 	ERR_FAIL_COND(body.is_invalid());
 
-	body->AddForce(to_jolt(p_force), body->GetCenterOfMassPosition() + to_jolt(p_position));
+	body->AddForce(to_jolt(p_force), body->GetPosition() + to_jolt(p_position));
 
 	_motion_changed(false);
 }
 
 void JoltBodyImpl3D::apply_central_force(const Vector3& p_force, bool p_lock) {
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_MSG(
+		space,
+		vformat(
+			"Failed to apply central force to '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
 	QUIET_FAIL_COND(!is_rigid());
 
 	if (custom_integrator || p_force == Vector3()) {
@@ -466,7 +539,16 @@ void JoltBodyImpl3D::apply_impulse(
 	const Vector3& p_position,
 	bool p_lock
 ) {
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_MSG(
+		space,
+		vformat(
+			"Failed to apply impulse to '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
 	QUIET_FAIL_COND(!is_rigid());
 
 	if (p_impulse == Vector3()) {
@@ -476,13 +558,22 @@ void JoltBodyImpl3D::apply_impulse(
 	const JoltWritableBody3D body = space->write_body(jolt_id, p_lock);
 	ERR_FAIL_COND(body.is_invalid());
 
-	body->AddImpulse(to_jolt(p_impulse), body->GetCenterOfMassPosition() + to_jolt(p_position));
+	body->AddImpulse(to_jolt(p_impulse), body->GetPosition() + to_jolt(p_position));
 
 	_motion_changed(false);
 }
 
 void JoltBodyImpl3D::apply_central_impulse(const Vector3& p_impulse, bool p_lock) {
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_MSG(
+		space,
+		vformat(
+			"Failed to apply central impulse to '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
 	QUIET_FAIL_COND(!is_rigid());
 
 	if (p_impulse == Vector3()) {
@@ -498,7 +589,16 @@ void JoltBodyImpl3D::apply_central_impulse(const Vector3& p_impulse, bool p_lock
 }
 
 void JoltBodyImpl3D::apply_torque(const Vector3& p_torque, bool p_lock) {
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_MSG(
+		space,
+		vformat(
+			"Failed to apply torque to '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
 	QUIET_FAIL_COND(!is_rigid());
 
 	if (custom_integrator || p_torque == Vector3()) {
@@ -514,7 +614,16 @@ void JoltBodyImpl3D::apply_torque(const Vector3& p_torque, bool p_lock) {
 }
 
 void JoltBodyImpl3D::apply_torque_impulse(const Vector3& p_impulse, bool p_lock) {
-	ERR_FAIL_NULL(space);
+	ERR_FAIL_NULL_MSG(
+		space,
+		vformat(
+			"Failed to apply torque impulse to '%s'. "
+			"Doing so without a physics space is not supported by Godot Jolt. "
+			"If this relates to a node, try adding the node to a scene tree first.",
+			to_string()
+		)
+	);
+
 	QUIET_FAIL_COND(!is_rigid());
 
 	if (p_impulse == Vector3()) {
@@ -600,45 +709,27 @@ void JoltBodyImpl3D::set_constant_torque(const Vector3& p_torque, bool p_lock) {
 }
 
 void JoltBodyImpl3D::add_collision_exception(const RID& p_excepted_body, bool p_lock) {
-	if (group_filter == nullptr) {
-		group_filter = new JoltGroupFilterRID();
-	}
-
-	group_filter->add_exception(p_excepted_body);
+	exceptions.push_back(p_excepted_body);
 
 	_exceptions_changed(p_lock);
 }
 
 void JoltBodyImpl3D::remove_collision_exception(const RID& p_excepted_body, bool p_lock) {
-	if (group_filter == nullptr) {
-		return;
-	}
-
-	group_filter->remove_exception(p_excepted_body);
-
-	if (group_filter->get_exception_count() == 0) {
-		group_filter = nullptr;
-	}
+	exceptions.erase(p_excepted_body);
 
 	_exceptions_changed(p_lock);
 }
 
 bool JoltBodyImpl3D::has_collision_exception(const RID& p_excepted_body) const {
-	return group_filter != nullptr && group_filter->has_exception(p_excepted_body);
+	return exceptions.find(p_excepted_body) >= 0;
 }
 
 TypedArray<RID> JoltBodyImpl3D::get_collision_exceptions() const {
-	if (group_filter == nullptr) {
-		return {};
-	}
-
-	const RID* exceptions = group_filter->get_exceptions();
-	const int32_t exception_count = group_filter->get_exception_count();
-
 	TypedArray<RID> result;
+	result.resize(exceptions.size());
 
-	for (auto i = 0; i < exception_count; ++i) {
-		result.push_back(exceptions[i]);
+	for (int32_t i = 0; i < exceptions.size(); ++i) {
+		result[i] = exceptions[i];
 	}
 
 	return result;
@@ -671,7 +762,11 @@ void JoltBodyImpl3D::remove_joint(JoltJointImpl3D* p_joint, bool p_lock) {
 }
 
 void JoltBodyImpl3D::call_queries([[maybe_unused]] JPH::Body& p_jolt_body) {
-	if (is_rigid() && custom_integration_callback.is_valid()) {
+	if (!sync_state) {
+		return;
+	}
+
+	if (custom_integration_callback.is_valid()) {
 		if (custom_integration_userdata.get_type() != Variant::NIL) {
 			static thread_local Array arguments = []() {
 				Array array;
@@ -696,7 +791,7 @@ void JoltBodyImpl3D::call_queries([[maybe_unused]] JPH::Body& p_jolt_body) {
 		}
 	}
 
-	if (sync_state && body_state_callback.is_valid()) {
+	if (body_state_callback.is_valid()) {
 		static thread_local Array arguments = []() {
 			Array array;
 			array.resize(1);
@@ -706,9 +801,9 @@ void JoltBodyImpl3D::call_queries([[maybe_unused]] JPH::Body& p_jolt_body) {
 		arguments[0] = get_direct_state();
 
 		body_state_callback.callv(arguments);
-
-		sync_state = false;
 	}
+
+	sync_state = false;
 }
 
 void JoltBodyImpl3D::pre_step(float p_step, JPH::Body& p_jolt_body) {
@@ -971,6 +1066,15 @@ void JoltBodyImpl3D::set_axis_lock(
 	}
 }
 
+bool JoltBodyImpl3D::can_collide_with(const JoltBodyImpl3D& p_other) const {
+	return (collision_mask & p_other.get_collision_layer()) != 0;
+}
+
+bool JoltBodyImpl3D::can_interact_with(const JoltBodyImpl3D& p_other) const {
+	return (can_collide_with(p_other) || p_other.can_collide_with(*this)) &&
+		!has_collision_exception(p_other.get_rid()) && !p_other.has_collision_exception(rid);
+}
+
 JPH::BroadPhaseLayer JoltBodyImpl3D::_get_broad_phase_layer() const {
 	switch (mode) {
 		case PhysicsServer3D::BODY_MODE_STATIC: {
@@ -1019,18 +1123,7 @@ void JoltBodyImpl3D::_create_in_space() {
 	jolt_settings->mMassPropertiesOverride.mMass = 1.0f;
 	jolt_settings->mMassPropertiesOverride.mInertia = JPH::Mat44::sIdentity();
 
-	JPH::Body* body = _create_end();
-	ERR_FAIL_NULL(body);
-
-	// HACK(mihe): Since group filters don't grant us access to user data we are instead forced
-	// abuse the collision group to carry the upper and lower bits of our RID, which we can then
-	// access and rebuild in our group filter for bodies that make use of collision exceptions.
-
-	JPH::CollisionGroup::GroupID group_id = 0;
-	JPH::CollisionGroup::SubGroupID sub_group_id = 0;
-	JoltGroupFilterRID::encode_rid(rid, group_id, sub_group_id);
-
-	body->SetCollisionGroup(JPH::CollisionGroup(nullptr, group_id, sub_group_id));
+	_create_end();
 }
 
 void JoltBodyImpl3D::_integrate_forces(float p_step, JPH::Body& p_jolt_body) {
@@ -1038,31 +1131,11 @@ void JoltBodyImpl3D::_integrate_forces(float p_step, JPH::Body& p_jolt_body) {
 		return;
 	}
 
-	gravity = Vector3();
-
-	const Vector3 position = to_godot(p_jolt_body.GetPosition());
-
-	bool gravity_done = false;
-
-	for (const JoltAreaImpl3D* area : areas) {
-		gravity_done = integrate(gravity, area->get_gravity_mode(), [&]() {
-			return area->compute_gravity(position);
-		});
-
-		if (gravity_done) {
-			break;
-		}
-	}
-
-	if (!gravity_done) {
-		gravity += space->get_default_area()->compute_gravity(position);
-	}
-
-	JPH::MotionProperties& motion_properties = *p_jolt_body.GetMotionPropertiesUnchecked();
-
-	gravity *= motion_properties.GetGravityFactor();
+	_update_gravity(p_jolt_body);
 
 	if (!custom_integrator) {
+		JPH::MotionProperties& motion_properties = *p_jolt_body.GetMotionPropertiesUnchecked();
+
 		motion_properties.SetLinearVelocityClamped(
 			motion_properties.GetLinearVelocity() + to_jolt(gravity) * p_step
 		);
@@ -1086,6 +1159,8 @@ void JoltBodyImpl3D::_pre_step_rigid(float p_step, JPH::Body& p_jolt_body) {
 }
 
 void JoltBodyImpl3D::_pre_step_kinematic(float p_step, JPH::Body& p_jolt_body) {
+	_update_gravity(p_jolt_body);
+
 	move_kinematic(p_step, p_jolt_body);
 
 	if (generates_contacts()) {
@@ -1263,6 +1338,30 @@ void JoltBodyImpl3D::_update_mass_properties(bool p_lock) {
 	}
 }
 
+void JoltBodyImpl3D::_update_gravity(JPH::Body& p_jolt_body) {
+	gravity = Vector3();
+
+	const Vector3 position = to_godot(p_jolt_body.GetPosition());
+
+	bool gravity_done = false;
+
+	for (const JoltAreaImpl3D* area : areas) {
+		gravity_done = integrate(gravity, area->get_gravity_mode(), [&]() {
+			return area->compute_gravity(position);
+		});
+
+		if (gravity_done) {
+			break;
+		}
+	}
+
+	if (!gravity_done) {
+		gravity += space->get_default_area()->compute_gravity(position);
+	}
+
+	gravity *= p_jolt_body.GetMotionPropertiesUnchecked()->GetGravityFactor();
+}
+
 void JoltBodyImpl3D::_update_damp(bool p_lock) {
 	if (space == nullptr) {
 		return;
@@ -1359,7 +1458,9 @@ void JoltBodyImpl3D::_update_group_filter(bool p_lock) {
 	const JoltWritableBody3D body = space->write_body(jolt_id, p_lock);
 	ERR_FAIL_COND(body.is_invalid());
 
-	body->GetCollisionGroup().SetGroupFilter(group_filter);
+	body->GetCollisionGroup().SetGroupFilter(
+		!exceptions.is_empty() ? JoltGroupFilter::instance : nullptr
+	);
 }
 
 void JoltBodyImpl3D::_mode_changed(bool p_lock) {
@@ -1371,6 +1472,7 @@ void JoltBodyImpl3D::_mode_changed(bool p_lock) {
 
 void JoltBodyImpl3D::_shapes_built(bool p_lock) {
 	_update_mass_properties(p_lock);
+	_update_joint_constraints(p_lock);
 	wake_up(p_lock);
 }
 
@@ -1379,10 +1481,13 @@ void JoltBodyImpl3D::_space_changing([[maybe_unused]] bool p_lock) {
 }
 
 void JoltBodyImpl3D::_space_changed(bool p_lock) {
+	_update_kinematic_transform(p_lock);
 	_update_mass_properties(p_lock);
 	_update_group_filter(p_lock);
 	_update_joint_constraints(p_lock);
 	_areas_changed(p_lock);
+
+	sync_state = false;
 }
 
 void JoltBodyImpl3D::_areas_changed(bool p_lock) {

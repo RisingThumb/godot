@@ -5,18 +5,6 @@
 #include "servers/jolt_project_settings.hpp"
 #include "spaces/jolt_space_3d.hpp"
 
-namespace {
-
-JPH::SubShapeIDPair pair_contact(
-	const JPH::Body& p_body1,
-	const JPH::Body& p_body2,
-	const JPH::ContactManifold& p_manifold
-) {
-	return {p_body1.GetID(), p_manifold.mSubShapeID1, p_body2.GetID(), p_manifold.mSubShapeID2};
-}
-
-} // namespace
-
 void JoltContactListener3D::listen_for(JoltObjectImpl3D* p_object) {
 	listening_for.insert(p_object->get_jolt_id());
 }
@@ -45,10 +33,10 @@ void JoltContactListener3D::OnContactAdded(
 	_try_override_collision_response(p_body1, p_body2, p_settings);
 	_try_apply_surface_velocities(p_body1, p_body2, p_settings);
 	_try_add_contacts(p_body1, p_body2, p_manifold, p_settings);
-	_try_add_area_overlap(p_body1, p_body2, p_manifold);
+	_try_evaluate_area_overlap(p_body1, p_body2, p_manifold);
 
 #ifdef GDJ_CONFIG_EDITOR
-	_try_add_debug_contacts(p_manifold);
+	_try_add_debug_contacts(p_body1, p_body2, p_manifold);
 #endif // GDJ_CONFIG_EDITOR
 }
 
@@ -61,9 +49,10 @@ void JoltContactListener3D::OnContactPersisted(
 	_try_override_collision_response(p_body1, p_body2, p_settings);
 	_try_apply_surface_velocities(p_body1, p_body2, p_settings);
 	_try_add_contacts(p_body1, p_body2, p_manifold, p_settings);
+	_try_evaluate_area_overlap(p_body1, p_body2, p_manifold);
 
 #ifdef GDJ_CONFIG_EDITOR
-	_try_add_debug_contacts(p_manifold);
+	_try_add_debug_contacts(p_body1, p_body2, p_manifold);
 #endif // GDJ_CONFIG_EDITOR
 }
 
@@ -78,47 +67,28 @@ bool JoltContactListener3D::_is_listening_for(const JPH::Body& p_body) const {
 }
 
 bool JoltContactListener3D::_try_override_collision_response(
-	const JPH::Body& p_body1,
-	const JPH::Body& p_body2,
+	const JPH::Body& p_jolt_body1,
+	const JPH::Body& p_jolt_body2,
 	JPH::ContactSettings& p_settings
 ) {
-	if (p_body1.IsSensor() || p_body2.IsSensor()) {
+	if (p_jolt_body1.IsSensor() || p_jolt_body2.IsSensor()) {
 		return false;
 	}
 
-	if (!p_body1.IsDynamic() && !p_body2.IsDynamic()) {
+	if (!p_jolt_body1.IsDynamic() && !p_jolt_body2.IsDynamic()) {
 		return false;
 	}
 
-	JPH::BroadPhaseLayer broad_phase_layer1 = {};
-	uint32_t collision_layer1 = 0;
-	uint32_t collision_mask1 = 0;
+	const auto* body1 = reinterpret_cast<JoltBodyImpl3D*>(p_jolt_body1.GetUserData());
+	const auto* body2 = reinterpret_cast<JoltBodyImpl3D*>(p_jolt_body2.GetUserData());
 
-	space->map_from_object_layer(
-		p_body1.GetObjectLayer(),
-		broad_phase_layer1,
-		collision_layer1,
-		collision_mask1
-	);
+	const bool can_collide1 = body1->can_collide_with(*body2);
+	const bool can_collide2 = body2->can_collide_with(*body1);
 
-	JPH::BroadPhaseLayer broad_phase_layer2 = {};
-	uint32_t collision_layer2 = 0;
-	uint32_t collision_mask2 = 0;
-
-	space->map_from_object_layer(
-		p_body2.GetObjectLayer(),
-		broad_phase_layer2,
-		collision_layer2,
-		collision_mask2
-	);
-
-	const bool first_scans_second = (collision_mask1 & collision_layer2) != 0;
-	const bool second_scans_first = (collision_mask2 & collision_layer1) != 0;
-
-	if (first_scans_second && !second_scans_first) {
+	if (can_collide1 && !can_collide2) {
 		p_settings.mInvMassScale2 = 0.0f;
 		p_settings.mInvInertiaScale2 = 0.0f;
-	} else if (second_scans_first && !first_scans_second) {
+	} else if (can_collide2 && !can_collide1) {
 		p_settings.mInvMassScale1 = 0.0f;
 		p_settings.mInvInertiaScale1 = 0.0f;
 	}
@@ -190,7 +160,12 @@ bool JoltContactListener3D::_try_add_contacts(
 		return false;
 	}
 
-	const JPH::SubShapeIDPair shape_pair = pair_contact(p_body1, p_body2, p_manifold);
+	const JPH::SubShapeIDPair shape_pair(
+		p_body1.GetID(),
+		p_manifold.mSubShapeID1,
+		p_body2.GetID(),
+		p_manifold.mSubShapeID2
+	);
 
 	auto& manifold = [&]() -> Manifold& {
 		const MutexLock write_lock(write_mutex);
@@ -254,7 +229,7 @@ bool JoltContactListener3D::_try_add_contacts(
 	return true;
 }
 
-bool JoltContactListener3D::_try_add_area_overlap(
+bool JoltContactListener3D::_try_evaluate_area_overlap(
 	const JPH::Body& p_body1,
 	const JPH::Body& p_body2,
 	const JPH::ContactManifold& p_manifold
@@ -263,16 +238,54 @@ bool JoltContactListener3D::_try_add_area_overlap(
 		return false;
 	}
 
-	if (!_is_listening_for(p_body1) && !_is_listening_for(p_body2)) {
-		return false;
+	const bool is_actually_overlapping = p_manifold.mPenetrationDepth >= 0.0f;
+
+	auto evaluate = [&](auto&& p_area, auto&& p_object, const JPH::SubShapeIDPair& p_shape_pair) {
+		const MutexLock write_lock(write_mutex);
+
+		if (is_actually_overlapping && p_area.can_monitor(p_object)) {
+			if (!area_overlaps.has(p_shape_pair)) {
+				area_overlaps.insert(p_shape_pair);
+				area_enters.insert(p_shape_pair);
+			}
+		} else {
+			if (area_overlaps.erase(p_shape_pair)) {
+				area_exits.insert(p_shape_pair);
+			}
+		}
+	};
+
+	const JPH::SubShapeIDPair shape_pair1(
+		p_body1.GetID(),
+		p_manifold.mSubShapeID1,
+		p_body2.GetID(),
+		p_manifold.mSubShapeID2
+	);
+
+	const JPH::SubShapeIDPair shape_pair2(
+		p_body2.GetID(),
+		p_manifold.mSubShapeID2,
+		p_body1.GetID(),
+		p_manifold.mSubShapeID1
+	);
+
+	const auto* object1 = reinterpret_cast<JoltObjectImpl3D*>(p_body1.GetUserData());
+	const auto* object2 = reinterpret_cast<JoltObjectImpl3D*>(p_body2.GetUserData());
+
+	const JoltAreaImpl3D* area1 = object1->as_area();
+	const JoltAreaImpl3D* area2 = object2->as_area();
+
+	const JoltBodyImpl3D* body1 = object1->as_body();
+	const JoltBodyImpl3D* body2 = object2->as_body();
+
+	if (area1 != nullptr && area2 != nullptr) {
+		evaluate(*area1, *area2, shape_pair1);
+		evaluate(*area2, *area1, shape_pair2);
+	} else if (area1 != nullptr && body2 != nullptr) {
+		evaluate(*area1, *body2, shape_pair1);
+	} else if (area2 != nullptr && body1 != nullptr) {
+		evaluate(*area2, *body1, shape_pair2);
 	}
-
-	const JPH::SubShapeIDPair shape_pair = pair_contact(p_body1, p_body2, p_manifold);
-
-	const MutexLock write_lock(write_mutex);
-
-	area_enters.insert(shape_pair);
-	area_overlaps.insert(shape_pair);
 
 	return true;
 }
@@ -284,20 +297,41 @@ bool JoltContactListener3D::_try_remove_contacts(const JPH::SubShapeIDPair& p_sh
 }
 
 bool JoltContactListener3D::_try_remove_area_overlap(const JPH::SubShapeIDPair& p_shape_pair) {
+	const JPH::SubShapeIDPair swapped_shape_pair(
+		p_shape_pair.GetBody2ID(),
+		p_shape_pair.GetSubShapeID2(),
+		p_shape_pair.GetBody1ID(),
+		p_shape_pair.GetSubShapeID1()
+	);
+
 	const MutexLock write_lock(write_mutex);
 
-	if (!area_overlaps.erase(p_shape_pair)) {
-		return false;
+	bool removed = false;
+
+	if (area_overlaps.erase(p_shape_pair)) {
+		area_exits.insert(p_shape_pair);
+		removed = true;
 	}
 
-	area_exits.insert(p_shape_pair);
+	if (area_overlaps.erase(swapped_shape_pair)) {
+		area_exits.insert(swapped_shape_pair);
+		removed = true;
+	}
 
-	return true;
+	return removed;
 }
 
 #ifdef GDJ_CONFIG_EDITOR
 
-bool JoltContactListener3D::_try_add_debug_contacts(const JPH::ContactManifold& p_manifold) {
+bool JoltContactListener3D::_try_add_debug_contacts(
+	const JPH::Body& p_body1,
+	const JPH::Body& p_body2,
+	const JPH::ContactManifold& p_manifold
+) {
+	if (p_body1.IsSensor() || p_body2.IsSensor()) {
+		return false;
+	}
+
 	const int64_t max_count = debug_contacts.size();
 
 	if (max_count == 0) {
@@ -416,13 +450,7 @@ void JoltContactListener3D::_flush_area_enters() {
 		JoltAreaImpl3D* area2 = jolt_body2.as_area();
 
 		if (area1 != nullptr && area2 != nullptr) {
-			if (area2->is_monitorable()) {
-				area1->area_shape_entered(body_id2, sub_shape_id2, sub_shape_id1);
-			}
-
-			if (area1->is_monitorable()) {
-				area2->area_shape_entered(body_id1, sub_shape_id1, sub_shape_id2);
-			}
+			area1->area_shape_entered(body_id2, sub_shape_id2, sub_shape_id1);
 		} else if (area1 != nullptr && area2 == nullptr) {
 			area1->body_shape_entered(body_id2, sub_shape_id2, sub_shape_id1);
 		} else if (area1 == nullptr && area2 != nullptr) {
@@ -489,7 +517,6 @@ void JoltContactListener3D::_flush_area_exits() {
 
 		if (area1 != nullptr && area2 != nullptr) {
 			area1->area_shape_exited(body_id2, sub_shape_id2, sub_shape_id1);
-			area2->area_shape_exited(body_id1, sub_shape_id1, sub_shape_id2);
 		} else if (area1 != nullptr && body2 != nullptr) {
 			area1->body_shape_exited(body_id2, sub_shape_id2, sub_shape_id1);
 		} else if (body1 != nullptr && area2 != nullptr) {

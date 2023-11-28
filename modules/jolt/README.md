@@ -1,4 +1,8 @@
-# ![Godot Jolt][log]
+<p align="center">
+  <a href="https://github.com/godot-jolt/godot-jolt">
+    <img alt="Godot Jolt" src="docs/logo.svg">
+  </a>
+</p>
 
 Godot Jolt is a native extension for the [Godot game engine][god] that allows you to use the [Jolt
 physics engine][jlt] to power Godot's 3D physics.
@@ -74,9 +78,11 @@ may be incompatible and is therefore not supported.
 - Windows (x86-64, x86)
 - Linux (x86-64, x86)
 - macOS (x86-64 + Apple Silicon)
+- iOS
+- Android (ARM64, ARM32, x86-64, x86)
 
-Note that Linux support is limited by the version of glibc present on the system, which must be
-compatible with the one found in Ubuntu 20.04 (Focal Fossa).
+Note that Linux support is limited to glibc 2.31 or newer, which for Ubuntu means 20.04 (Focal
+Fossa) or newer.
 
 ## How do I get started?
 
@@ -95,7 +101,6 @@ In no particular order, here are some of the bigger items:
 
 - Adding new types of joints, like Jolt's `DistanceConstraint`
 - Adding support for double-precision, allowing for large worlds
-- Adding support for iOS and Android
 - Making the physics server thread-safe
 
 See the [`v1.0.0`][prj] project board for a more up-to-date overview.
@@ -128,7 +133,6 @@ See [`CHANGELOG.md`][chl] for details about what notable changes were included i
 Godot Jolt is distributed under the MIT license. See [`LICENSE.txt`][lic] for more details and
 [`THIRDPARTY.txt`][trd] for third-party licenses.
 
-[log]: docs/logo.svg
 [god]: https://godotengine.org/
 [jlt]: https://github.com/jrouwe/JoltPhysics
 [jst]: docs/settings.md#jolt-3d

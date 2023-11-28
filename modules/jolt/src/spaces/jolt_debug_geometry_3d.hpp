@@ -52,6 +52,10 @@ public:
 
 	void set_draw_velocities(bool p_enabled);
 
+	bool get_draw_triangle_outlines() const;
+
+	void set_draw_triangle_outlines(bool p_enabled);
+
 	bool get_draw_constraint_reference_frames() const;
 
 	void set_draw_constraint_reference_frames(bool p_enabled);
@@ -93,4 +97,4 @@ private:
 #endif // JPH_DEBUG_RENDERER
 };
 
-VARIANT_ENUM_CAST(JoltDebugGeometry3D::ColorScheme);
+VARIANT_ENUM_CAST(JoltDebugGeometry3D::ColorScheme)

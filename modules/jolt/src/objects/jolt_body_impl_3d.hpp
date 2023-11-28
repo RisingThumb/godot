@@ -1,11 +1,9 @@
 #pragma once
 
-#include "objects/jolt_group_filter_rid.hpp"
 #include "objects/jolt_object_impl_3d.hpp"
 #include "objects/jolt_physics_direct_body_state_3d.hpp"
 
 class JoltAreaImpl3D;
-class JoltGroupFilterRID;
 class JoltJointImpl3D;
 
 class JoltBodyImpl3D final : public JoltObjectImpl3D {
@@ -35,6 +33,8 @@ public:
 
 		Vector3 impulse;
 	};
+
+	JoltBodyImpl3D();
 
 	~JoltBodyImpl3D() override;
 
@@ -84,6 +84,8 @@ public:
 	void set_angular_velocity(const Vector3& p_velocity, bool p_lock = true);
 
 	void set_axis_velocity(const Vector3& p_axis_velocity, bool p_lock = true);
+
+	Vector3 get_velocity_at_position(const Vector3& p_position, bool p_lock = true) const override;
 
 	bool has_custom_center_of_mass() const override { return custom_center_of_mass; }
 
@@ -240,6 +242,10 @@ public:
 
 	bool are_axes_locked() const { return locked_axes != 0; }
 
+	bool can_collide_with(const JoltBodyImpl3D& p_other) const;
+
+	bool can_interact_with(const JoltBodyImpl3D& p_other) const;
+
 private:
 	JPH::BroadPhaseLayer _get_broad_phase_layer() const override;
 
@@ -266,6 +272,8 @@ private:
 	void _stop_locked_axes(JPH::Body& p_jolt_body) const;
 
 	void _update_mass_properties(bool p_lock = true);
+
+	void _update_gravity(JPH::Body& p_jolt_body);
 
 	void _update_damp(bool p_lock = true);
 
@@ -297,7 +305,9 @@ private:
 
 	void _axis_lock_changed(bool p_lock = true);
 
-	LocalVectorJolt<Contact> contacts;
+	LocalVector<RID> exceptions;
+
+	LocalVector<Contact> contacts;
 
 	LocalVectorJolt<JoltAreaImpl3D*> areas;
 
@@ -326,8 +336,6 @@ private:
 	Callable custom_integration_callback;
 
 	JoltPhysicsDirectBodyState3D* direct_state = nullptr;
-
-	JPH::Ref<JoltGroupFilterRID> group_filter;
 
 	PhysicsServer3D::BodyMode mode = PhysicsServer3D::BODY_MODE_RIGID;
 

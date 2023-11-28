@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-jolt.git
 	branch = module
-	commit = 388d0f515f782c4fdd3c0c8e286daac0a1fb8270
-	parent = a0f40d7c85fceac5dad453910369d2d70767d110
+	commit = 72f83de5988325a21d6f919d00947485d31d764c
+	parent = 21687c1469ae84e5296abf096b2b1149a65ba1f3
 	method = merge
 	cmdver = 0.4.6

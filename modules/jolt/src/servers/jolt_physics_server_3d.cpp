@@ -8,7 +8,6 @@
 #include "joints/jolt_slider_joint_impl_3d.hpp"
 #include "objects/jolt_area_impl_3d.hpp"
 #include "objects/jolt_body_impl_3d.hpp"
-#include "servers/jolt_project_settings.hpp"
 #include "shapes/jolt_box_shape_impl_3d.hpp"
 #include "shapes/jolt_capsule_shape_impl_3d.hpp"
 #include "shapes/jolt_concave_polygon_shape_impl_3d.hpp"
@@ -29,6 +28,12 @@ thread_local const HashSet<ObjectID> *JoltPhysicsServer3D::exclude_objects;
 #endif
 
 void JoltPhysicsServer3D::_bind_methods() {
+#ifdef GDJ_CONFIG_EDITOR
+	BIND_METHOD(JoltPhysicsServer3D, dump_debug_snapshots, "dir");
+
+	BIND_METHOD(JoltPhysicsServer3D, space_dump_debug_snapshot, "space", "dir");
+#endif // GDJ_CONFIG_EDITOR
+
 	BIND_METHOD(JoltPhysicsServer3D, joint_get_enabled, "joint");
 	BIND_METHOD(JoltPhysicsServer3D, joint_set_enabled, "joint", "enabled");
 
@@ -40,38 +45,38 @@ void JoltPhysicsServer3D::_bind_methods() {
 
 	BIND_METHOD(JoltPhysicsServer3D, pin_joint_get_applied_force, "joint");
 
-	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_get_jolt_param, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_set_jolt_param, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_get_jolt_param, "joint", "param");
+	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_set_jolt_param, "joint", "param", "value");
 
-	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_get_jolt_flag, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_set_jolt_flag, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_get_jolt_flag, "joint", "flag");
+	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_set_jolt_flag, "joint", "flag", "value");
 
 	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_get_applied_force, "joint");
 	BIND_METHOD(JoltPhysicsServer3D, hinge_joint_get_applied_torque, "joint");
 
-	BIND_METHOD(JoltPhysicsServer3D, slider_joint_get_jolt_param, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, slider_joint_set_jolt_param, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, slider_joint_get_jolt_param, "joint", "param");
+	BIND_METHOD(JoltPhysicsServer3D, slider_joint_set_jolt_param, "joint", "param", "value");
 
-	BIND_METHOD(JoltPhysicsServer3D, slider_joint_get_jolt_flag, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, slider_joint_set_jolt_flag, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, slider_joint_get_jolt_flag, "joint", "flag");
+	BIND_METHOD(JoltPhysicsServer3D, slider_joint_set_jolt_flag, "joint", "flag", "value");
 
 	BIND_METHOD(JoltPhysicsServer3D, slider_joint_get_applied_force, "joint");
 	BIND_METHOD(JoltPhysicsServer3D, slider_joint_get_applied_torque, "joint");
 
-	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_get_jolt_param, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_set_jolt_param, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_get_jolt_param, "joint", "param");
+	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_set_jolt_param, "joint", "param", "value");
 
-	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_get_jolt_flag, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_set_jolt_flag, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_get_jolt_flag, "joint", "flag");
+	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_set_jolt_flag, "joint", "flag", "value");
 
 	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_get_applied_force, "joint");
 	BIND_METHOD(JoltPhysicsServer3D, cone_twist_joint_get_applied_torque, "joint");
 
-	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_get_jolt_param, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_set_jolt_param, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_get_jolt_param, "joint", "param");
+	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_set_jolt_param, "joint", "param", "value");
 
-	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_get_jolt_flag, "joint");
-	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_set_jolt_flag, "joint", "value");
+	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_get_jolt_flag, "joint", "flag");
+	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_set_jolt_flag, "joint", "flag", "value");
 
 	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_get_applied_force, "joint");
 	BIND_METHOD(JoltPhysicsServer3D, generic_6dof_joint_get_applied_torque, "joint");
@@ -120,6 +125,22 @@ void JoltPhysicsServer3D::_bind_methods() {
 	BIND_ENUM_CONSTANT(G6DOF_JOINT_FLAG_ENABLE_LINEAR_LIMIT_SPRING);
 	BIND_ENUM_CONSTANT(G6DOF_JOINT_FLAG_ENABLE_LINEAR_SPRING_FREQUENCY);
 	BIND_ENUM_CONSTANT(G6DOF_JOINT_FLAG_ENABLE_ANGULAR_SPRING_FREQUENCY);
+}
+
+JoltPhysicsServer3D::JoltPhysicsServer3D() {
+	const StringName server_name = NAMEOF(JoltPhysicsServer3D);
+
+	Engine* engine = Engine::get_singleton();
+
+	if (engine->has_singleton(server_name)) {
+		engine->unregister_singleton(server_name);
+	}
+
+	engine->register_singleton(server_name, this);
+}
+
+JoltPhysicsServer3D::~JoltPhysicsServer3D() {
+	Engine::get_singleton()->unregister_singleton(NAMEOF(JoltPhysicsServer3D));
 }
 
 RID JoltPhysicsServer3D::_world_boundary_shape_create() {
@@ -1096,7 +1117,11 @@ bool JoltPhysicsServer3D::_body_test_motion(
 
 PhysicsDirectBodyState3D* JoltPhysicsServer3D::_body_get_direct_state(const RID& p_body) {
 	JoltBodyImpl3D* body = body_owner.get_or_null(p_body);
-	ERR_FAIL_NULL_D(body);
+
+	// Unlike most other server methods this one is meant to quietly return null if the body has
+	// since been freed, which is used in places like `move_and_slide` to determine whether a
+	// previously used platform has been freed or not.
+	QUIET_FAIL_NULL_D(body);
 
 	return body->get_direct_state();
 }
@@ -1769,13 +1794,6 @@ void JoltPhysicsServer3D::_set_active(bool p_active) {
 }
 
 void JoltPhysicsServer3D::_init() {
-	if (JoltProjectSettings::should_run_on_separate_thread()) {
-		WARN_PRINT_ONCE(
-			"Running on a separate thread is not currently supported by Godot Jolt. "
-			"Any such value will be ignored."
-		);
-	}
-
 	job_system = new JoltJobSystem();
 }
 
@@ -1784,13 +1802,13 @@ void JoltPhysicsServer3D::_step(double p_step) {
 		return;
 	}
 
-	job_system->pre_step();
-
 	for (JoltSpace3D* active_space : active_spaces) {
-		active_space->step((float)p_step);
-	}
+		job_system->pre_step();
 
-	job_system->post_step();
+		active_space->step((float)p_step);
+
+		job_system->post_step();
+	}
 }
 
 void JoltPhysicsServer3D::_flush_queries() {
@@ -1862,6 +1880,23 @@ void JoltPhysicsServer3D::free_joint(JoltJointImpl3D* p_joint) {
 	joint_owner.free(p_joint->get_rid());
 	memdelete_safely(p_joint);
 }
+
+#ifdef GDJ_CONFIG_EDITOR
+
+void JoltPhysicsServer3D::dump_debug_snapshots(const String& p_dir) {
+	for (JoltSpace3D* space : active_spaces) {
+		space->dump_debug_snapshot(p_dir);
+	}
+}
+
+void JoltPhysicsServer3D::space_dump_debug_snapshot(const RID& p_space, const String& p_dir) {
+	JoltSpace3D* space = space_owner.get_or_null(p_space);
+	ERR_FAIL_NULL(space);
+
+	space->dump_debug_snapshot(p_dir);
+}
+
+#endif // GDJ_CONFIG_EDITOR
 
 bool JoltPhysicsServer3D::joint_get_enabled(const RID& p_joint) const {
 	JoltJointImpl3D* joint = joint_owner.get_or_null(p_joint);

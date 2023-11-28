@@ -1,6 +1,7 @@
 #include "jolt_area_impl_3d.hpp"
 
 #include "objects/jolt_body_impl_3d.hpp"
+#include "objects/jolt_group_filter.hpp"
 #include "servers/jolt_project_settings.hpp"
 #include "spaces/jolt_broad_phase_layer.hpp"
 #include "spaces/jolt_space_3d.hpp"
@@ -14,6 +15,9 @@ const Vector3 DEFAULT_WIND_SOURCE = {};
 const Vector3 DEFAULT_WIND_DIRECTION = {};
 
 } // namespace
+
+JoltAreaImpl3D::JoltAreaImpl3D()
+	: JoltObjectImpl3D(JoltObjectImpl3D::OBJECT_TYPE_AREA) { }
 
 Variant JoltAreaImpl3D::get_param(PhysicsServer3D::AreaParameter p_param) const {
 	switch (p_param) {
@@ -173,6 +177,29 @@ void JoltAreaImpl3D::set_monitorable(bool p_monitorable, bool p_lock) {
 	_monitorable_changed(p_lock);
 }
 
+bool JoltAreaImpl3D::can_monitor(const JoltBodyImpl3D& p_other) const {
+	return (collision_mask & p_other.get_collision_layer()) != 0;
+}
+
+bool JoltAreaImpl3D::can_monitor(const JoltAreaImpl3D& p_other) const {
+	return p_other.is_monitorable() && (collision_mask & p_other.get_collision_layer()) != 0;
+}
+
+bool JoltAreaImpl3D::can_interact_with(const JoltBodyImpl3D& p_other) const {
+	return can_monitor(p_other);
+}
+
+bool JoltAreaImpl3D::can_interact_with(const JoltAreaImpl3D& p_other) const {
+	return can_monitor(p_other) || p_other.can_monitor(*this);
+}
+
+Vector3 JoltAreaImpl3D::get_velocity_at_position(
+	[[maybe_unused]] const Vector3& p_position,
+	[[maybe_unused]] bool p_lock
+) const {
+	return {0.0f, 0.0f, 0.0f};
+}
+
 Vector3 JoltAreaImpl3D::compute_gravity(const Vector3& p_position, bool p_lock) const {
 	if (!point_gravity) {
 		return gravity_vector * gravity;
@@ -182,6 +209,10 @@ Vector3 JoltAreaImpl3D::compute_gravity(const Vector3& p_position, bool p_lock) 
 	const Vector3 to_point = point - p_position;
 	const float to_point_dist_sq = max((double)to_point.length_squared(), CMP_EPSILON);
 	const Vector3 to_point_dir = to_point / Math::sqrt(to_point_dist_sq);
+
+	if (point_gravity_distance == 0.0f) {
+		return to_point_dir * gravity;
+	}
 
 	const float gravity_dist_sq = point_gravity_distance * point_gravity_distance;
 
@@ -436,6 +467,17 @@ void JoltAreaImpl3D::_force_areas_exited(bool p_remove, [[maybe_unused]] bool p_
 	}
 }
 
+void JoltAreaImpl3D::_update_group_filter(bool p_lock) {
+	if (space == nullptr) {
+		return;
+	}
+
+	const JoltWritableBody3D body = space->write_body(jolt_id, p_lock);
+	ERR_FAIL_COND(body.is_invalid());
+
+	body->GetCollisionGroup().SetGroupFilter(JoltGroupFilter::instance);
+}
+
 void JoltAreaImpl3D::_space_changing(bool p_lock) {
 	if (space != nullptr) {
 		// HACK(mihe): Ideally we would rely on our contact listener to report all the exits when we
@@ -445,6 +487,10 @@ void JoltAreaImpl3D::_space_changing(bool p_lock) {
 		_force_bodies_exited(true, p_lock);
 		_force_areas_exited(true, p_lock);
 	}
+}
+
+void JoltAreaImpl3D::_space_changed(bool p_lock) {
+	_update_group_filter(p_lock);
 }
 
 void JoltAreaImpl3D::_body_monitoring_changed() {
