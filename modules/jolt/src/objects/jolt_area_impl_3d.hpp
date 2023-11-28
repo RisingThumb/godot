@@ -1,10 +1,6 @@
 #pragma once
 
-#include "modules/jolt/src/objects/jolt_object_impl_3d.hpp"
-#include <stdint.h>
-#include <cstdint>
-
-class JoltBodyImpl3D;
+#include "objects/jolt_object_impl_3d.hpp"
 
 class JoltAreaImpl3D final : public JoltObjectImpl3D {
 	struct BodyIDHasher {
@@ -40,7 +36,7 @@ class JoltAreaImpl3D final : public JoltObjectImpl3D {
 	};
 
 	struct Overlap {
-		HashMap<ShapeIDPair, ShapeIndexPair, ShapeIDPair> shape_pairs;
+		HashMapJolt<ShapeIDPair, ShapeIndexPair, ShapeIDPair> shape_pairs;
 
 		InlineVector<ShapeIndexPair, 1> pending_added;
 
@@ -51,12 +47,10 @@ class JoltAreaImpl3D final : public JoltObjectImpl3D {
 		ObjectID instance_id;
 	};
 
-	using OverlapsById = HashMap<JPH::BodyID, Overlap, BodyIDHasher>;
+	using OverlapsById = HashMapJolt<JPH::BodyID, Overlap, BodyIDHasher>;
 
 public:
 	using OverrideMode = PhysicsServer3D::AreaSpaceOverrideMode;
-
-	JoltAreaImpl3D();
 
 	Variant get_param(PhysicsServer3D::AreaParameter p_param) const;
 
@@ -70,21 +64,15 @@ public:
 
 	void set_area_monitor_callback(const Callable& p_callback);
 
+	bool is_monitoring() const {
+		return has_body_monitor_callback() || has_area_monitor_callback();
+	}
+
 	bool is_monitorable() const { return monitorable; }
 
 	void set_monitorable(bool p_monitorable, bool p_lock = true);
 
-	bool can_monitor(const JoltBodyImpl3D& p_other) const;
-
-	bool can_monitor(const JoltAreaImpl3D& p_other) const;
-
-	bool can_interact_with(const JoltBodyImpl3D& p_other) const;
-
-	bool can_interact_with(const JoltAreaImpl3D& p_other) const;
-
-	Vector3 get_velocity_at_position(const Vector3& p_position, bool p_lock = true) const override;
-
-	bool generates_contacts() const override { return false; }
+	bool generates_contacts() const override { return is_monitoring(); }
 
 	bool is_point_gravity() const { return point_gravity; }
 
@@ -207,11 +195,7 @@ private:
 
 	void _force_areas_exited(bool p_remove, bool p_lock = true);
 
-	void _update_group_filter(bool p_lock = true);
-
 	void _space_changing(bool p_lock = true) override;
-
-	void _space_changed(bool p_lock = true) override;
 
 	void _body_monitoring_changed();
 

@@ -38,7 +38,7 @@ class JoltContactListener3D final : public JPH::ContactListener {
 		JPH::Vec3 impulse = {};
 	};
 
-	using Contacts = LocalVector<Contact>;
+	using Contacts = LocalVectorJolt<Contact>;
 
 	struct Manifold {
 		Contacts contacts1;
@@ -48,11 +48,11 @@ class JoltContactListener3D final : public JPH::ContactListener {
 		float depth = 0.0f;
 	};
 
-	using BodyIDs = HashSet<JPH::BodyID, BodyIDHasher>;
+	using BodyIDs = HashSetJolt<JPH::BodyID, BodyIDHasher>;
 
-	using Overlaps = HashSet<JPH::SubShapeIDPair, ShapePairHasher>;
+	using Overlaps = HashSetJolt<JPH::SubShapeIDPair, ShapePairHasher>;
 
-	using ManifoldsByShapePair = HashMap<JPH::SubShapeIDPair, Manifold, ShapePairHasher>;
+	using ManifoldsByShapePair = HashMapJolt<JPH::SubShapeIDPair, Manifold, ShapePairHasher>;
 
 public:
 	explicit JoltContactListener3D(JoltSpace3D* p_space)
@@ -94,8 +94,8 @@ private:
 	bool _is_listening_for(const JPH::Body& p_body) const;
 
 	bool _try_override_collision_response(
-		const JPH::Body& p_jolt_body1,
-		const JPH::Body& p_jolt_body2,
+		const JPH::Body& p_body1,
+		const JPH::Body& p_body2,
 		JPH::ContactSettings& p_settings
 	);
 
@@ -112,7 +112,7 @@ private:
 		JPH::ContactSettings& p_settings
 	);
 
-	bool _try_evaluate_area_overlap(
+	bool _try_add_area_overlap(
 		const JPH::Body& p_body1,
 		const JPH::Body& p_body2,
 		const JPH::ContactManifold& p_manifold
@@ -123,11 +123,7 @@ private:
 	bool _try_remove_area_overlap(const JPH::SubShapeIDPair& p_shape_pair);
 
 #ifdef GDJ_CONFIG_EDITOR
-	bool _try_add_debug_contacts(
-		const JPH::Body& p_body1,
-		const JPH::Body& p_body2,
-		const JPH::ContactManifold& p_manifold
-	);
+	bool _try_add_debug_contacts(const JPH::ContactManifold& p_manifold);
 #endif // GDJ_CONFIG_EDITOR
 
 	void _flush_contacts();

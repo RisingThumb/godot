@@ -25,8 +25,6 @@ private:
 
 	JPH::ShapeRefC _build_mesh() const;
 
-	JPH::ShapeRefC _build_double_sided(const JPH::Shape* p_shape) const;
-
 	PackedFloat32Array heights;
 
 	int32_t width = 0;

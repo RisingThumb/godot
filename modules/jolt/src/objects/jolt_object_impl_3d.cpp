@@ -1,14 +1,12 @@
 #include "jolt_object_impl_3d.hpp"
 
-#include "objects/jolt_group_filter.hpp"
 #include "servers/jolt_project_settings.hpp"
 #include "shapes/jolt_custom_empty_shape.hpp"
 #include "shapes/jolt_shape_impl_3d.hpp"
 #include "spaces/jolt_layer_mapper.hpp"
 #include "spaces/jolt_space_3d.hpp"
 
-JoltObjectImpl3D::JoltObjectImpl3D(ObjectType p_object_type)
-	: object_type(p_object_type) {
+JoltObjectImpl3D::JoltObjectImpl3D() {
 	jolt_settings->mAllowSleeping = true;
 	jolt_settings->mFriction = 1.0f;
 	jolt_settings->mRestitution = 0.0f;
@@ -21,9 +19,15 @@ JoltObjectImpl3D::~JoltObjectImpl3D() {
 	delete_safely(jolt_settings);
 }
 
+#ifdef GDEXTENSION
 GodotObject* JoltObjectImpl3D::get_instance() const {
 	return internal::gdextension_interface_object_get_instance_from_id(instance_id);
 }
+#else
+Object* JoltObjectImpl3D::get_instance() const {
+	return ObjectDB::get_instance(instance_id);
+}
+#endif
 
 Object* JoltObjectImpl3D::get_instance_unsafe() const {
 	// HACK(mihe): This is being deliberately and incorrectly cast to a godot-cpp `Object` when in
@@ -103,7 +107,7 @@ Transform3D JoltObjectImpl3D::get_transform_scaled(bool p_lock) const {
 
 void JoltObjectImpl3D::set_transform(Transform3D p_transform, bool p_lock) {
 	Vector3 new_scale;
-	Math::decompose(p_transform, new_scale);
+	MathEx::decompose(p_transform, new_scale);
 
 	// HACK(mihe): Ideally we would do an exact comparison here, but that would likely mismatch
 	// quite often due to the nature of floating-point numbers. This does mean that the transform we
@@ -143,15 +147,7 @@ Vector3 JoltObjectImpl3D::get_position(bool p_lock) const {
 }
 
 Vector3 JoltObjectImpl3D::get_center_of_mass(bool p_lock) const {
-	ERR_FAIL_NULL_D_MSG(
-		space,
-		vformat(
-			"Failed to retrieve center-of-mass of '%s'. "
-			"Doing so without a physics space is not supported by Godot Jolt. "
-			"If this relates to a node, try adding the node to a scene tree first.",
-			to_string()
-		)
-	);
+	ERR_FAIL_NULL_D(space);
 
 	const JoltReadableBody3D body = space->read_body(jolt_id, p_lock);
 	ERR_FAIL_COND_D(body.is_invalid());
@@ -160,15 +156,7 @@ Vector3 JoltObjectImpl3D::get_center_of_mass(bool p_lock) const {
 }
 
 Vector3 JoltObjectImpl3D::get_center_of_mass_local(bool p_lock) const {
-	ERR_FAIL_NULL_D_MSG(
-		space,
-		vformat(
-			"Failed to retrieve local center-of-mass of '%s'. "
-			"Doing so without a physics space is not supported by Godot Jolt. "
-			"If this relates to a node, try adding the node to a scene tree first.",
-			to_string()
-		)
-	);
+	ERR_FAIL_NULL_D(space);
 
 	return get_transform_scaled(p_lock).xform_inv(get_center_of_mass(p_lock));
 }
@@ -193,6 +181,15 @@ Vector3 JoltObjectImpl3D::get_angular_velocity(bool p_lock) const {
 	ERR_FAIL_COND_D(body.is_invalid());
 
 	return to_godot(body->GetAngularVelocity());
+}
+
+Vector3 JoltObjectImpl3D::get_velocity_at_position(const Vector3& p_position, bool p_lock) const {
+	ERR_FAIL_NULL_D(space);
+
+	const JoltReadableBody3D body = space->read_body(jolt_id, p_lock);
+	ERR_FAIL_COND_D(body.is_invalid());
+
+	return to_godot(body->GetPointVelocity(to_jolt(p_position)));
 }
 
 JPH::ShapeRefC JoltObjectImpl3D::try_build_shape() {
@@ -285,7 +282,7 @@ void JoltObjectImpl3D::add_shape(
 	bool p_lock
 ) {
 	Vector3 shape_scale;
-	Math::decompose(p_transform, shape_scale);
+	MathEx::decompose(p_transform, shape_scale);
 
 	shapes.emplace_back(this, p_shape, p_transform, shape_scale, p_disabled);
 
@@ -372,7 +369,7 @@ void JoltObjectImpl3D::set_shape_transform(int32_t p_index, Transform3D p_transf
 	ERR_FAIL_INDEX(p_index, shapes.size());
 
 	Vector3 new_scale;
-	Math::decompose(p_transform, new_scale);
+	MathEx::decompose(p_transform, new_scale);
 
 	JoltShapeInstance3D& shape = shapes[p_index];
 
@@ -474,12 +471,7 @@ void JoltObjectImpl3D::_create_begin() {
 		jolt_shape = new JoltCustomEmptyShape();
 	}
 
-	JPH::CollisionGroup::GroupID group_id = 0;
-	JPH::CollisionGroup::SubGroupID sub_group_id = 0;
-	JoltGroupFilter::encode_object(this, group_id, sub_group_id);
-
 	jolt_settings->mObjectLayer = _get_object_layer();
-	jolt_settings->mCollisionGroup = JPH::CollisionGroup(nullptr, group_id, sub_group_id);
 	jolt_settings->mMotionType = _get_motion_type();
 	jolt_settings->SetShape(jolt_shape);
 }

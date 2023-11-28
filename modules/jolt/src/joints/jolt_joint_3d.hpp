@@ -1,8 +1,5 @@
 #pragma once
 
-#include "modules/jolt/src/misc/gdclass_macros.hpp"
-#include "scene/3d/node_3d.h"
-
 class JoltPhysicsServer3D;
 
 class JoltJoint3D : public Node3D {
@@ -46,8 +43,11 @@ public:
 
 	void body_exiting_tree();
 
+#ifdef GDEXTENSION
 	PackedStringArray _get_configuration_warnings() const override;
-
+#else
+	PackedStringArray get_configuration_warnings() const override;
+#endif
 protected:
 	static PhysicsServer3D* _get_physics_server();
 

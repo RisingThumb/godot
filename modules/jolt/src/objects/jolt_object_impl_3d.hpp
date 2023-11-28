@@ -1,44 +1,15 @@
 #pragma once
 
 #include "shapes/jolt_shape_instance_3d.hpp"
-#include "core/math/transform_3d.h"
 
-class JoltAreaImpl3D;
-class JoltBodyImpl3D;
 class JoltShapeImpl3D;
 class JoltSpace3D;
 
 class JoltObjectImpl3D {
 public:
-	enum ObjectType : int8_t {
-		OBJECT_TYPE_INVALID,
-		OBJECT_TYPE_BODY,
-		OBJECT_TYPE_AREA
-	};
-
-	explicit JoltObjectImpl3D(ObjectType p_object_type);
+	JoltObjectImpl3D();
 
 	virtual ~JoltObjectImpl3D() = 0;
-
-	bool is_body() const { return object_type == OBJECT_TYPE_BODY; };
-
-	bool is_area() const { return object_type == OBJECT_TYPE_AREA; };
-
-	JoltBodyImpl3D* as_body() {
-		return is_body() ? reinterpret_cast<JoltBodyImpl3D*>(this) : nullptr;
-	}
-
-	const JoltBodyImpl3D* as_body() const {
-		return is_body() ? reinterpret_cast<const JoltBodyImpl3D*>(this) : nullptr;
-	}
-
-	JoltAreaImpl3D* as_area() {
-		return is_area() ? reinterpret_cast<JoltAreaImpl3D*>(this) : nullptr;
-	}
-
-	const JoltAreaImpl3D* as_area() const {
-		return is_area() ? reinterpret_cast<const JoltAreaImpl3D*>(this) : nullptr;
-	}
 
 	RID get_rid() const { return rid; }
 
@@ -50,8 +21,11 @@ public:
 
 	JPH::BodyID get_jolt_id() const { return jolt_id; }
 
+#ifdef GDEXTENSION
 	GodotObject* get_instance() const;
-
+#else
+	Object* get_instance() const;
+#endif
 	Object* get_instance_unsafe() const;
 
 	Object* get_instance_wrapped() const;
@@ -88,8 +62,7 @@ public:
 
 	Vector3 get_angular_velocity(bool p_lock = true) const;
 
-	virtual Vector3 get_velocity_at_position(const Vector3& p_position, bool p_lock = true)
-		const = 0;
+	Vector3 get_velocity_at_position(const Vector3& p_position, bool p_lock = true) const;
 
 	virtual bool has_custom_center_of_mass() const = 0;
 
@@ -193,7 +166,7 @@ protected:
 
 	virtual void _transform_changed([[maybe_unused]] bool p_lock = true) { }
 
-	LocalVector<JoltShapeInstance3D> shapes;
+	LocalVectorJolt<JoltShapeInstance3D> shapes;
 
 	Vector3 scale = {1.0f, 1.0f, 1.0f};
 
@@ -214,8 +187,6 @@ protected:
 	uint32_t collision_layer = 1;
 
 	uint32_t collision_mask = 1;
-
-	ObjectType object_type = OBJECT_TYPE_INVALID;
 
 	bool pickable = false;
 };

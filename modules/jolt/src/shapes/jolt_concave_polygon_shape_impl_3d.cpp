@@ -1,7 +1,12 @@
 #include "jolt_concave_polygon_shape_impl_3d.hpp"
 
-#include "servers/jolt_project_settings.hpp"
 #include "shapes/jolt_custom_double_sided_shape.hpp"
+
+namespace {
+
+const float ACTIVE_EDGE_THRESHOLD = Math::cos(Math::deg_to_rad(50.0f));
+
+} // namespace
 
 Variant JoltConcavePolygonShapeImpl3D::get_data() const {
 	Dictionary data;
@@ -40,12 +45,15 @@ JPH::ShapeRefC JoltConcavePolygonShapeImpl3D::_build() const {
 	const int32_t face_count = vertex_count / 3;
 	const int32_t excess_vertex_count = vertex_count % 3;
 
+	// HACK(mihe): We can't emit an error for a vertex count of 0 because of things like CSGShape3D
+	// which has its proper initialization deferred, leading to errors being emitted for every
+	// single one that's created
 	QUIET_FAIL_COND_D(vertex_count == 0);
 
 	ERR_FAIL_COND_D_MSG(
 		vertex_count < 3,
 		vformat(
-			"Godot Jolt failed to build concave polygon shape with %s. "
+			"Failed to build concave polygon shape with %s. "
 			"It must have a vertex count of at least 3. "
 			"This shape belongs to %s.",
 			to_string(),
@@ -56,7 +64,7 @@ JPH::ShapeRefC JoltConcavePolygonShapeImpl3D::_build() const {
 	ERR_FAIL_COND_D_MSG(
 		excess_vertex_count != 0,
 		vformat(
-			"Godot Jolt failed to build concave polygon shape with %s. "
+			"Failed to build concave polygon shape with %s. "
 			"It must have a vertex count that is divisible by 3. "
 			"This shape belongs to %s.",
 			to_string(),
@@ -83,14 +91,14 @@ JPH::ShapeRefC JoltConcavePolygonShapeImpl3D::_build() const {
 	}
 
 	JPH::MeshShapeSettings shape_settings(jolt_faces);
-	shape_settings.mActiveEdgeCosThresholdAngle = JoltProjectSettings::get_active_edge_threshold();
+	shape_settings.mActiveEdgeCosThresholdAngle = ACTIVE_EDGE_THRESHOLD;
 
 	const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
 
 	ERR_FAIL_COND_D_MSG(
 		shape_result.HasError(),
 		vformat(
-			"Godot Jolt failed to build concave polygon shape with %s. "
+			"Failed to build concave polygon shape with %s. "
 			"It returned the following error: '%s'. "
 			"This shape belongs to %s.",
 			to_string(),

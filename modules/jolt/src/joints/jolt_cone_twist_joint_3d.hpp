@@ -1,8 +1,7 @@
 #pragma once
 
-#include "modules/jolt/src/joints/jolt_joint_3d.hpp"
-#include "modules/jolt/src/servers/jolt_physics_server_3d.hpp"
-#include "scene/3d/physics_body_3d.h"
+#include "joints/jolt_joint_3d.hpp"
+#include "servers/jolt_physics_server_3d.hpp"
 
 class JoltConeTwistJoint3D final : public JoltJoint3D {
 	GDCLASS_NO_WARN(JoltConeTwistJoint3D, JoltJoint3D)

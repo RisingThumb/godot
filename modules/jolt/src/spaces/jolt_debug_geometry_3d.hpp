@@ -22,7 +22,7 @@ public:
 
 	~JoltDebugGeometry3D() override;
 
-	void _process(double p_delta) override;
+	void _process(double p_delta) GDEX_OVERRIDE_EX_ONLY;
 
 	bool get_draw_bodies() const;
 
@@ -52,10 +52,6 @@ public:
 
 	void set_draw_velocities(bool p_enabled);
 
-	bool get_draw_triangle_outlines() const;
-
-	void set_draw_triangle_outlines(bool p_enabled);
-
 	bool get_draw_constraint_reference_frames() const;
 
 	void set_draw_constraint_reference_frames(bool p_enabled);
@@ -75,7 +71,16 @@ public:
 	bool get_material_depth_test() const;
 
 	void set_material_depth_test(bool p_enabled);
-
+protected:
+#ifndef GDEXTENSION
+	void _notification(int p_what) {
+		switch(p_what) {
+			case NOTIFICATION_PROCESS: {
+				_process(get_process_delta_time());
+			} break;
+		}
+	}
+#endif
 private:
 #ifdef JPH_DEBUG_RENDERER
 	JoltDebugRenderer3D::DrawSettings draw_settings;
@@ -88,4 +93,4 @@ private:
 #endif // JPH_DEBUG_RENDERER
 };
 
-VARIANT_ENUM_CAST(JoltDebugGeometry3D::ColorScheme)
+VARIANT_ENUM_CAST(JoltDebugGeometry3D::ColorScheme);

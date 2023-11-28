@@ -1,8 +1,7 @@
 #pragma once
 
-#include "jolt_joint_3d.hpp"
+#include "joints/jolt_joint_3d.hpp"
 #include "servers/jolt_physics_server_3d.hpp"
-#include "servers/physics_server_3d.h"
 
 class JoltGeneric6DOFJoint3D final : public JoltJoint3D {
 	GDCLASS_NO_WARN(JoltGeneric6DOFJoint3D, JoltJoint3D)
@@ -457,5 +456,5 @@ private:
 	bool angular_spring_enabled[AXIS_COUNT] = {};
 };
 
-VARIANT_ENUM_CAST(JoltGeneric6DOFJoint3D::Param)
-VARIANT_ENUM_CAST(JoltGeneric6DOFJoint3D::Flag)
+VARIANT_ENUM_CAST(JoltGeneric6DOFJoint3D::Param);
+VARIANT_ENUM_CAST(JoltGeneric6DOFJoint3D::Flag);

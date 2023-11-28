@@ -1,7 +1,10 @@
 #include "jolt_height_map_shape_impl_3d.hpp"
 
-#include "servers/jolt_project_settings.hpp"
-#include "shapes/jolt_custom_double_sided_shape.hpp"
+namespace {
+
+const float ACTIVE_EDGE_THRESHOLD = Math::cos(Math::deg_to_rad(50.0f));
+
+} // namespace
 
 Variant JoltHeightMapShapeImpl3D::get_data() const {
 	Dictionary data;
@@ -48,7 +51,7 @@ JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build() const {
 	ERR_FAIL_COND_D_MSG(
 		height_count != width * depth,
 		vformat(
-			"Godot Jolt failed to build height map shape with %s. "
+			"Failed to build height map shape with %s. "
 			"Height count must be the product of width and depth. "
 			"This shape belongs to %s.",
 			to_string(),
@@ -59,7 +62,7 @@ JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build() const {
 	ERR_FAIL_COND_D_MSG(
 		width < 2 || depth < 2,
 		vformat(
-			"Godot Jolt failed to build height map shape with %s. "
+			"Failed to build height map shape with %s. "
 			"The height map must be at least 2x2. "
 			"This shape belongs to %s.",
 			to_string(),
@@ -74,7 +77,11 @@ JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build() const {
 	const int32_t block_size = 2; // Default of JPH::HeightFieldShapeSettings::mBlockSize
 	const int32_t block_count = width / block_size;
 
-	return _build_double_sided(block_count >= 2 ? _build_height_field() : _build_mesh());
+	if (block_count < 2) {
+		return _build_mesh();
+	}
+
+	return _build_height_field();
 }
 
 JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build_height_field() const {
@@ -88,7 +95,7 @@ JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build_height_field() const {
 	// we mirror the shape along the Z-axis to get the desired triangulation and reverse the rows to
 	// undo the mirroring.
 
-	LocalVector<float> heights_rev;
+	LocalVectorJolt<float> heights_rev;
 	heights_rev.resize((int32_t)heights.size());
 
 	const float* heights_ptr = heights.ptr();
@@ -111,14 +118,14 @@ JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build_height_field() const {
 	);
 
 	shape_settings.mBitsPerSample = shape_settings.CalculateBitsPerSampleForError(0.0f);
-	shape_settings.mActiveEdgeCosThresholdAngle = JoltProjectSettings::get_active_edge_threshold();
+	shape_settings.mActiveEdgeCosThresholdAngle = ACTIVE_EDGE_THRESHOLD;
 
 	const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
 
 	ERR_FAIL_COND_D_MSG(
 		shape_result.HasError(),
 		vformat(
-			"Godot Jolt failed to build height map shape with %s. "
+			"Failed to build height map shape with %s. "
 			"It returned the following error: '%s'. "
 			"This shape belongs to %s.",
 			to_string(),
@@ -175,37 +182,19 @@ JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build_mesh() const {
 	}
 
 	JPH::MeshShapeSettings shape_settings(std::move(vertices), std::move(indices));
-	shape_settings.mActiveEdgeCosThresholdAngle = JoltProjectSettings::get_active_edge_threshold();
+	shape_settings.mActiveEdgeCosThresholdAngle = ACTIVE_EDGE_THRESHOLD;
 
 	const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
 
 	ERR_FAIL_COND_D_MSG(
 		shape_result.HasError(),
 		vformat(
-			"Godot Jolt failed to build height map shape (as polygon) with %s. "
+			"Failed to build height map shape (as polygon) with %s. "
 			"It returned the following error: '%s'. "
 			"This shape belongs to %s.",
 			to_string(),
 			to_godot(shape_result.GetError()),
 			_owners_to_string()
-		)
-	);
-
-	return shape_result.Get();
-}
-
-JPH::ShapeRefC JoltHeightMapShapeImpl3D::_build_double_sided(const JPH::Shape* p_shape) const {
-	ERR_FAIL_NULL_D(p_shape);
-
-	const JoltCustomDoubleSidedShapeSettings shape_settings(p_shape);
-	const JPH::ShapeSettings::ShapeResult shape_result = shape_settings.Create();
-
-	ERR_FAIL_COND_D_MSG(
-		shape_result.HasError(),
-		vformat(
-			"Failed to make shape double-sided. "
-			"It returned the following error: '%s'.",
-			to_godot(shape_result.GetError())
 		)
 	);
 

@@ -2,7 +2,6 @@
 
 #include "objects/jolt_body_impl_3d.hpp"
 #include "spaces/jolt_space_3d.hpp"
-#include "misc/type_conversions.hpp"
 
 namespace {
 

@@ -14,11 +14,115 @@
 #pragma warning(disable : 4245 4365)
 #endif // _MSC_VER
 
+#ifdef GDEXTENSION
 
-#ifdef GDJ_CONFIG_EDITOR
+#include <gdextension_interface.h>
+
+#include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/geometry_instance3d.hpp>
+#include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/physics_body3d.hpp>
+#include <godot_cpp/classes/physics_direct_body_state3d_extension.hpp>
+#include <godot_cpp/classes/physics_direct_space_state3d_extension.hpp>
+#include <godot_cpp/classes/physics_server3d_extension.hpp>
+#include <godot_cpp/classes/physics_server3d_extension_motion_result.hpp>
+#include <godot_cpp/classes/physics_server3d_extension_ray_result.hpp>
+#include <godot_cpp/classes/physics_server3d_extension_shape_rest_info.hpp>
+#include <godot_cpp/classes/physics_server3d_extension_shape_result.hpp>
+#include <godot_cpp/classes/physics_server3d_manager.hpp>
+#include <godot_cpp/classes/physics_server3d_rendering_server_handler.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/classes/worker_thread_pool.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/defs.hpp>
+#include <godot_cpp/core/error_macros.hpp>
+#include <godot_cpp/core/math.hpp>
+#include <godot_cpp/core/memory.hpp>
+#include <godot_cpp/core/object.hpp>
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/templates/hashfuncs.hpp>
+#include <godot_cpp/variant/builtin_types.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/variant.hpp>
+#else
+
+#include "core/config/engine.h"
+#include "scene/3d/visual_instance_3d.h"
+#include "core/object/object.h"
+#include "core/os/os.h"
+#include "scene/3d/physics_body_3d.h"
+#include "servers/physics_server_3d.h"
+#include "core/config/project_settings.h"
+#include "core/object/worker_thread_pool.h"
+#include "core/object/class_db.h"
+#include "core/typedefs.h"
+#include "core/error/error_macros.h"
+#include "core/math/math_defs.h"
+#include "core/math/math_funcs.h"
+#include "core/os/memory.h"
+#include "core/templates/hashfuncs.h"
+#include "core/variant/variant.h"
+#include "core/variant/variant_utility.h"
+#include "scene/3d/node_3d.h"
+
+
+#endif
+
+#if defined(GDJ_CONFIG_EDITOR)
+
+#ifdef GDEXTENSION
+#include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/editor_interface.hpp>
+#include <godot_cpp/classes/editor_node3d_gizmo.hpp>
+#include <godot_cpp/classes/editor_node3d_gizmo_plugin.hpp>
+#include <godot_cpp/classes/editor_plugin.hpp>
+#include <godot_cpp/classes/editor_settings.hpp>
+#include <godot_cpp/classes/engine_debugger.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/theme.hpp>
+#include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/classes/timer.hpp>
+#include <godot_cpp/templates/spin_lock.hpp>
+#else
+
+#include "scene/gui/control.h"
+#include "editor/editor_interface.h"
+#include "editor/plugins/node_3d_editor_gizmos.h"
+#include "editor/plugins/node_3d_editor_plugin.h"
+#include "editor/editor_plugin.h"
+#include "editor/editor_settings.h"
+#include "core/debugger/engine_debugger.h"
+#include "scene/resources/material.h"
+#include "scene/resources/theme.h"
+#include "core/os/time.h"
+#include "scene/main/timer.h"
+#include "core/os/spin_lock.h"
+#include "servers/extensions/physics_server_3d_extension.h"
+
+#endif // GDEXTENSION || TOOLS_ENABLED
+
 #endif // GDJ_CONFIG_EDITOR
 
 #ifdef JPH_DEBUG_RENDERER
+
+#ifdef GDEXTENSION
+
+#include <godot_cpp/classes/camera3d.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/world3d.hpp>
+
+#else
+
+#include "scene/3d/camera_3d.h"
+#include "servers/rendering_server.h"
+#include "scene/resources/material.h"
+#include "scene/main/viewport.h"
+#include "scene/resources/world_3d.h"
+
+#endif
 
 #endif // JPH_DEBUG_RENDERER
 
@@ -52,7 +156,6 @@
 #include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
-#include <Jolt/Physics/Collision/Shape/MutableCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
@@ -64,7 +167,6 @@
 #include <Jolt/Physics/Constraints/SixDOFConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
 #include <Jolt/Physics/Constraints/SwingTwistConstraint.h>
-#include <Jolt/Physics/PhysicsScene.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/RegisterTypes.h>
 
@@ -73,6 +175,8 @@
 #include <Jolt/Renderer/DebugRenderer.h>
 
 #endif // JPH_DEBUG_RENDERER
+
+#include <mimalloc.h>
 
 #include <algorithm>
 #include <atomic>
@@ -89,24 +193,32 @@
 #include <variant>
 #include <vector>
 
+using namespace godot;
+
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif // _MSC_VER
 
-#include "modules/jolt/src/containers/free_list.hpp"
-#include "modules/jolt/src/containers/hash_map.hpp"
-#include "modules/jolt/src/containers/hash_set.hpp"
-#include "modules/jolt/src/containers/inline_vector.hpp"
-#include "modules/jolt/src/containers/local_vector.hpp"
-#include "modules/jolt/src/containers/rid_owner.hpp"
-#include "modules/jolt/src/misc/bind_macros.hpp"
-#include "modules/jolt/src/misc/error_macros.hpp"
-#include "modules/jolt/src/misc/gdclass_macros.hpp"
-#include "modules/jolt/src/misc/jolt_stream_wrappers.hpp"
-#include "modules/jolt/src/misc/math.hpp"
-#include "modules/jolt/src/misc/scope_guard.hpp"
-#include "modules/jolt/src/misc/type_conversions.hpp"
-#include "modules/jolt/src/misc/utility_functions.hpp"
-#include "modules/jolt/src/misc/utility_macros.hpp"
+#include "containers/local_vector.hpp"
+#include "containers/free_list.hpp"
+#include "containers/inline_vector.hpp"
+#include "misc/bind_macros.hpp"
+#include "misc/error_macros.hpp"
+#include "misc/gdclass_macros.hpp"
+#include "misc/gdex_rename.hpp"
+#include "containers/hash_map.hpp"
+#include "containers/hash_set.hpp"
+#include "misc/math.hpp"
+
+#ifdef GDEXTENSION
+#else
+#include "core/templates/rid.h"
+#include "core/string/print_string.h"
+#include "containers/rid_owner.hpp"
+#endif
+
+#include "misc/scope_guard.hpp"
+#include "misc/type_conversions.hpp"
+#include "misc/utility_functions.hpp"
 
 // NOLINTEND(readability-duplicate-include)

@@ -19,7 +19,9 @@ void JoltJobSystem::pre_step() {
 }
 
 void JoltJobSystem::post_step() {
-	_reclaim_jobs();
+	while (Job* job = Job::pop_completed()) {
+		jobs.destruct(job);
+	}
 }
 
 #ifdef GDJ_CONFIG_EDITOR
@@ -149,8 +151,6 @@ JPH::JobHandle JoltJobSystem::CreateJob(
 		);
 
 		OS::get_singleton()->delay_usec(100);
-
-		_reclaim_jobs();
 	}
 
 	// This will increment the job's reference count, so must happen before we queue the job
@@ -175,10 +175,4 @@ void JoltJobSystem::QueueJobs(JPH::JobSystem::Job** p_jobs, JPH::uint p_job_coun
 
 void JoltJobSystem::FreeJob(JPH::JobSystem::Job* p_job) {
 	Job::push_completed(static_cast<Job*>(p_job));
-}
-
-void JoltJobSystem::_reclaim_jobs() {
-	while (Job* job = Job::pop_completed()) {
-		jobs.destruct(job);
-	}
 }

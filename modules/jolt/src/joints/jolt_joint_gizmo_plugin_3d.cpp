@@ -263,11 +263,11 @@ void JoltJointGizmoPlugin3D::_bind_methods() {
 JoltJointGizmoPlugin3D::JoltJointGizmoPlugin3D(EditorInterface* p_editor_interface)
 	: editor_interface(p_editor_interface) { }
 
-bool JoltJointGizmoPlugin3D::_has_gizmo(Node3D* p_node) const {
+bool JoltJointGizmoPlugin3D::_has_gizmo(Node3D* p_node) GDEX_CONST_EX_ONLY {
 	return Object::cast_to<JoltJoint3D>(p_node) != nullptr;
 }
 
-Ref<EditorNode3DGizmo> JoltJointGizmoPlugin3D::_create_gizmo(Node3D* p_node) const {
+Ref<EditorNode3DGizmo> JoltJointGizmoPlugin3D::_create_gizmo(Node3D* p_node) GDEX_CONST_EX_ONLY {
 	EditorNode3DGizmo* gizmo = nullptr;
 
 	if (_has_gizmo(p_node)) {
@@ -361,7 +361,11 @@ void JoltJointGizmoPlugin3D::_create_redraw_timer(const Ref<EditorNode3DGizmo>& 
 	Timer* timer = memnew(Timer);
 	timer->set_name("JoltJointGizmoRedrawTimer");
 	timer->set_wait_time(1.0 / 120.0);
+	#ifdef GDEXTENSION
 	timer->connect("timeout", Callable(this, "redraw_gizmos"));
+	#else
+	timer->connect("timeout", callable_mp(this, &JoltJointGizmoPlugin3D::redraw_gizmos));
+	#endif
 	timer->set_autostart(true);
 
 	editor_node->call_deferred("add_child", timer);

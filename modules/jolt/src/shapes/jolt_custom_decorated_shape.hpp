@@ -155,8 +155,7 @@ public:
 	void CollideSoftBodyVertices(
 		JPH::Mat44Arg p_center_of_mass_transform,
 		JPH::Vec3Arg p_scale,
-		JPH::SoftBodyVertex* p_vertices,
-		JPH::uint p_num_vertices,
+		JPH::Array<JPH::SoftBodyVertex>& p_vertices,
 		float p_delta_time,
 		JPH::Vec3Arg p_displacement_due_to_gravity,
 		int p_colliding_shape_index
@@ -165,7 +164,6 @@ public:
 			p_center_of_mass_transform,
 			p_scale,
 			p_vertices,
-			p_num_vertices,
 			p_delta_time,
 			p_displacement_due_to_gravity,
 			p_colliding_shape_index

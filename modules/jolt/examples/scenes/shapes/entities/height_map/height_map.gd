@@ -38,11 +38,11 @@ var noise_frequency: float = 0.2:
 		noise_frequency = value
 		_properties_changed()
 
-func _properties_changed() -> void:
+func _properties_changed():
 	if Engine.is_editor_hint():
 		_generate()
 
-func _generate() -> void:
+func _generate():
 	var _collision_shape := get_node_or_null(collision_shape)
 	if not _collision_shape:
 		return

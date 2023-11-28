@@ -26,9 +26,6 @@ void JoltDebugGeometry3D::_bind_methods() {
 	BIND_METHOD(JoltDebugGeometry3D, get_draw_velocities);
 	BIND_METHOD(JoltDebugGeometry3D, set_draw_velocities, "enabled");
 
-	BIND_METHOD(JoltDebugGeometry3D, get_draw_triangle_outlines);
-	BIND_METHOD(JoltDebugGeometry3D, set_draw_triangle_outlines, "enabled");
-
 	BIND_METHOD(JoltDebugGeometry3D, get_draw_constraint_reference_frames);
 	BIND_METHOD(JoltDebugGeometry3D, set_draw_constraint_reference_frames, "enabled");
 
@@ -60,8 +57,6 @@ void JoltDebugGeometry3D::_bind_methods() {
 
 	BIND_PROPERTY("draw_velocities", Variant::BOOL);
 
-	BIND_PROPERTY("draw_triangle_outlines", Variant::BOOL);
-
 	BIND_PROPERTY("draw_constraint_reference_frames", Variant::BOOL);
 
 	BIND_PROPERTY("draw_constraint_limits", Variant::BOOL);
@@ -92,6 +87,7 @@ JoltDebugGeometry3D::JoltDebugGeometry3D()
 	set_base(mesh);
 
 	set_cast_shadows_setting(GeometryInstance3D::SHADOW_CASTING_SETTING_OFF);
+	set_process(true);
 
 	default_material.instantiate();
 	default_material->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
@@ -101,7 +97,11 @@ JoltDebugGeometry3D::JoltDebugGeometry3D()
 
 JoltDebugGeometry3D::~JoltDebugGeometry3D() {
 	if (mesh.is_valid()) {
+		#ifdef GDEXTENSION
 		RenderingServer::get_singleton()->free_rid(mesh);
+		#else
+		RenderingServer::get_singleton()->free(mesh);
+		#endif
 	}
 
 	JoltDebugRenderer3D::release(debug_renderer);
@@ -247,21 +247,6 @@ bool JoltDebugGeometry3D::get_draw_velocities() const {
 void JoltDebugGeometry3D::set_draw_velocities([[maybe_unused]] bool p_enabled) {
 #ifdef JPH_DEBUG_RENDERER
 	draw_settings.draw_velocities = p_enabled;
-#endif // JPH_DEBUG_RENDERER
-}
-
-bool JoltDebugGeometry3D::get_draw_triangle_outlines() const {
-#ifdef JPH_DEBUG_RENDERER
-	return JPH::MeshShape::sDrawTriangleOutlines;
-#else // JPH_DEBUG_RENDERER
-	return false;
-#endif // JPH_DEBUG_RENDERER
-}
-
-void JoltDebugGeometry3D::set_draw_triangle_outlines([[maybe_unused]] bool p_enabled) {
-#ifdef JPH_DEBUG_RENDERER
-	JPH::MeshShape::sDrawTriangleOutlines = p_enabled;
-	JPH::HeightFieldShape::sDrawTriangleOutlines = p_enabled;
 #endif // JPH_DEBUG_RENDERER
 }
 

@@ -35,12 +35,10 @@ String JoltConvexPolygonShapeImpl3D::to_string() const {
 JPH::ShapeRefC JoltConvexPolygonShapeImpl3D::_build() const {
 	const auto vertex_count = (int32_t)vertices.size();
 
-	QUIET_FAIL_COND_D(vertex_count == 0);
-
 	ERR_FAIL_COND_D_MSG(
 		vertex_count < 3,
 		vformat(
-			"Godot Jolt failed to build convex polygon shape with %s. "
+			"Failed to build convex polygon shape with %s. "
 			"It must have a vertex count of at least 3. "
 			"This shape belongs to %s.",
 			to_string(),
@@ -66,7 +64,7 @@ JPH::ShapeRefC JoltConvexPolygonShapeImpl3D::_build() const {
 	ERR_FAIL_COND_D_MSG(
 		shape_result.HasError(),
 		vformat(
-			"Godot Jolt failed to build convex polygon shape with %s. "
+			"Failed to build convex polygon shape with %s. "
 			"It returned the following error: '%s'. "
 			"This shape belongs to %s.",
 			to_string(),
