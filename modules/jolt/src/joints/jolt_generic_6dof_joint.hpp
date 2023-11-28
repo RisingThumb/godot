@@ -1,7 +1,8 @@
 #pragma once
 
-#include "joints/jolt_joint_3d.hpp"
+#include "jolt_joint_3d.hpp"
 #include "servers/jolt_physics_server_3d.hpp"
+#include "servers/physics_server_3d.h"
 
 class JoltGeneric6DOFJoint3D final : public JoltJoint3D {
 	GDCLASS_NO_WARN(JoltGeneric6DOFJoint3D, JoltJoint3D)

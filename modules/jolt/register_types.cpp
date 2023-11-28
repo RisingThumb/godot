@@ -1,23 +1,25 @@
-#include "joints/jolt_cone_twist_joint_3d.hpp"
-#include "joints/jolt_generic_6dof_joint.hpp"
-#include "joints/jolt_hinge_joint_3d.hpp"
-#include "joints/jolt_joint_gizmo_plugin_3d.hpp"
-#include "joints/jolt_pin_joint_3d.hpp"
-#include "joints/jolt_slider_joint_3d.hpp"
-#include "objects/jolt_physics_direct_body_state_3d.hpp"
-#include "servers/jolt_editor_plugin.hpp"
-#include "servers/jolt_globals.hpp"
-#include "servers/jolt_physics_server_3d.hpp"
-#include "servers/jolt_physics_server_factory_3d.hpp"
-#include "servers/jolt_project_settings.hpp"
-#include "spaces/jolt_debug_geometry_3d.hpp"
-#include "spaces/jolt_physics_direct_space_state_3d.hpp"
+#include "modules/jolt/src/joints/jolt_cone_twist_joint_3d.hpp"
+#include "modules/jolt/src/joints/jolt_generic_6dof_joint.hpp"
+#include "modules/jolt/src/joints/jolt_hinge_joint_3d.hpp"
+#include "modules/jolt/src/joints/jolt_joint_gizmo_plugin_3d.hpp"
+#include "modules/jolt/src/joints/jolt_pin_joint_3d.hpp"
+#include "modules/jolt/src/joints/jolt_slider_joint_3d.hpp"
+#include "modules/jolt/src/objects/jolt_physics_direct_body_state_3d.hpp"
+#include "modules/jolt/src/servers/jolt_editor_plugin.hpp"
+#include "modules/jolt/src/servers/jolt_globals.hpp"
+#include "modules/jolt/src/servers/jolt_physics_server_3d.hpp"
+#include "modules/jolt/src/servers/jolt_physics_server_factory_3d.hpp"
+#include "modules/jolt/src/servers/jolt_project_settings.hpp"
+#include "modules/jolt/src/spaces/jolt_debug_geometry_3d.hpp"
+#include "modules/jolt/src/spaces/jolt_physics_direct_space_state_3d.hpp"
 
-namespace {
+#include "modules/register_module_types.h"
+
+#include <mimalloc-new-delete.h>
 
 JoltPhysicsServerFactory3D* server_factory = nullptr;
 
-void on_initialize(ModuleInitializationLevel p_level) {
+void initialize_jolt_module(ModuleInitializationLevel p_level) {
 	switch (p_level) {
 		case MODULE_INITIALIZATION_LEVEL_CORE: {
 		} break;
@@ -57,7 +59,7 @@ void on_initialize(ModuleInitializationLevel p_level) {
 	}
 }
 
-void on_terminate(ModuleInitializationLevel p_level) {
+void uninitialize_jolt_module(ModuleInitializationLevel p_level) {
 	switch (p_level) {
 		case MODULE_INITIALIZATION_LEVEL_CORE: {
 		} break;
@@ -72,24 +74,3 @@ void on_terminate(ModuleInitializationLevel p_level) {
 		} break;
 	}
 }
-
-} // namespace
-
-extern "C" {
-
-GDExtensionBool GDE_EXPORT godot_jolt_main(
-	GDExtensionInterfaceGetProcAddress p_get_proc_address,
-	GDExtensionClassLibraryPtr p_library,
-	GDExtensionInitialization* p_initialization
-) {
-	const GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, p_initialization);
-
-	init_obj.register_initializer(&on_initialize);
-	init_obj.register_terminator(&on_terminate);
-
-	init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SERVERS);
-
-	return init_obj.init();
-}
-
-} // extern "C"

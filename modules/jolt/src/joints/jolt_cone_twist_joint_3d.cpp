@@ -1,4 +1,4 @@
-#include "jolt_cone_twist_joint_3d.hpp"
+#include "modules/jolt/src/joints/jolt_cone_twist_joint_3d.hpp"
 
 #include "servers/jolt_physics_server_3d.hpp"
 

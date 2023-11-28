@@ -1,5 +1,11 @@
 #pragma once
 
+#include "modules/jolt/src/servers/jolt_physics_server_3d.hpp"
+#include "modules/jolt/src/misc/gdclass_macros.hpp"
+#include "modules/jolt/src/misc/error_macros.hpp"
+#include "servers/extensions/physics_server_3d_extension.h"
+#include "modules/jolt/src/servers/jolt_physics_server_3d.hpp"
+
 class JoltAreaImpl3D;
 class JoltBodyImpl3D;
 class JoltJobSystem;

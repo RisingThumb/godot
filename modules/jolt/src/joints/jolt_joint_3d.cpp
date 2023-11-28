@@ -1,6 +1,7 @@
-#include "jolt_joint_3d.hpp"
+#include "modules/jolt/src/joints/jolt_joint_3d.hpp"
 
 #include "servers/jolt_physics_server_3d.hpp"
+#include "servers/physics_server_3d.h"
 
 void JoltJoint3D::_bind_methods() {
 	BIND_METHOD(JoltJoint3D, get_enabled);

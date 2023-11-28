@@ -2,6 +2,7 @@
 
 #include "objects/jolt_object_impl_3d.hpp"
 #include "objects/jolt_physics_direct_body_state_3d.hpp"
+#include "servers/physics_server_3d.h"
 
 class JoltAreaImpl3D;
 class JoltJointImpl3D;

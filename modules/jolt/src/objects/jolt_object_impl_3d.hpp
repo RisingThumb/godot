@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shapes/jolt_shape_instance_3d.hpp"
+#include "core/math/transform_3d.h"
 
 class JoltAreaImpl3D;
 class JoltBodyImpl3D;

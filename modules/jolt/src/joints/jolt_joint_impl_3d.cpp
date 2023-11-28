@@ -1,5 +1,7 @@
-#include "jolt_joint_impl_3d.hpp"
+#include "modules/jolt/src/joints/jolt_joint_impl_3d.hpp"
 
+#include "modules/jolt/src/misc/error_macros.hpp"
+#include "modules/jolt/src/objects/jolt_body_impl_3d.hpp"
 #include "objects/jolt_body_impl_3d.hpp"
 #include "spaces/jolt_space_3d.hpp"
 

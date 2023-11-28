@@ -1,0 +1,402 @@
+#!/usr/bin/env python
+
+import modulify
+
+Import("env")
+Import("env_modules")
+
+env_godot_jolt = env_modules.Clone()
+
+thirdparty_dir = "thirdparty/jolt"
+env_godot_jolt.Prepend(CPPPATH=["thirdparty/jolt/"])
+
+jolt_config = ARGUMENTS.get("jolt_config", "EditorDebug")
+is_editor_config = jolt_config in ["EditorDebug", "EditorDevelopment", "EditorDistribution"]
+is_debug_config = jolt_config in ["Debug", "EditorDebug"]
+is_development_config = jolt_config in ["Development", "EditorDevelopment"]
+is_distribution_config = jolt_config in ["Distribution", "EditorDistribution"]
+is_optimized_config = is_development_config or is_distribution_config
+
+x86_instruction_set = ARGUMENTS.get("jolt_instruction_set", "SSE2")
+
+if is_development_config or is_debug_config:
+    env_godot_jolt.Prepend(CPPDEFINES=["JPH_DEBUG_RENDERER"])
+
+if env["platform"] == "windows":
+    env_godot_jolt.Prepend(CPPDEFINES=[
+        "GDJ_PLATFORM_WINDOWS"
+        "WIN32_LEAN_AND_MEAN",
+        "VC_EXTRALEAN",
+        "NOMINMAX",
+        "STRICT",
+    ])
+elif env["platform"] == "linuxbsd":
+    env_godot_jolt.Prepend(CXXFLAGS=["-std=gnu++17"])
+
+use_avx512 = False
+use_avx2 = False
+use_avx = False
+use_sse2 = False
+use_bmi1 = False
+use_fma3 = False
+use_f16c = False
+use_sse4_2 = False
+
+env_godot_jolt.Prepend(CPPDEFINES=[
+    "MI_OVERRIDE=FALSE",
+    "MI_USE_CXX=FALSE",
+    "MI_OSX_INTERPOSE=FALSE",
+    "MI_OSX_ZONE=FALSE",
+    "MI_WIN_REDIRECT=FALSE",
+    "MI_BUILD_SHARED=FALSE",
+    "MI_BUILD_OBJECT=FALSE",
+    "MI_BUILD_TESTS=FALSE",
+    "MI_SKIP_COLLECT_ON_EXIT=TRUE"
+])
+
+env_godot_jolt.Prepend(CPPPATH=["thirdparty/mimalloc/include", "thirdparty/jolt"])
+
+if x86_instruction_set in ["AVX512"]:
+    use_avx512 = True
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_AVX512"])
+if x86_instruction_set in ["AVX512", "AVX2"]:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_AVX2"])
+    use_avx2 = True
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_BMI1"])
+    use_bmi1 = True
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_FMA3"])
+    use_fma3 = True
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_F16C"])
+    use_f16c = True
+if x86_instruction_set in ["AVX512", "AVX2", "AVX"]:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_AVX"])
+    use_avx = True
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_SSE4_2"])
+    use_sse4_2 = True
+if x86_instruction_set in ["AVX512", "AVX2", "AVX", "SSE2"]:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_USE_SSE2"])
+    use_sse2 = True
+
+if is_debug_config:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_CONFIG_DEBUG", "_DEBUG", "NDEBUG"])
+if is_development_config:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_CONFIG_DEVELOPMENT"])
+if is_distribution_config:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_CONFIG_DISTRIBUTION"])
+if is_editor_config:
+    env_godot_jolt.Prepend(CPPDEFINES=["GDJ_CONFIG_EDITOR"])
+
+if env.msvc:
+    if is_optimized_config:
+        env_godot_jolt.Prepend(CXXFLAGS=["/GS"])
+    if use_avx512:
+        env_godot_jolt.Prepend(CXXFLAGS=["/arch:AVX512"])
+    elif use_avx2:
+        env_godot_jolt.Prepend(CXXFLAGS=["/arch:AVX2"])
+    elif use_avx:
+        env_godot_jolt.Prepend(CXXFLAGS=["/arch:AVX"])
+else:
+    if use_sse2:
+        env_godot_jolt.Prepend(CXXFLAGS=["-msse2"])
+    if use_sse4_2:
+        env_godot_jolt.Prepend(CXXFLAGS=["-msse4.2", "-mpopcnt"])
+    if use_avx:
+        env_godot_jolt.Prepend(CXXFLAGS=["-mavx"])
+    if use_f16c:
+        env_godot_jolt.Prepend(CXXFLAGS=["-mf16c"])
+    if use_fma3:
+        env_godot_jolt.Prepend(CXXFLAGS=["-mfma"])
+    if use_bmi1:
+        env_godot_jolt.Prepend(CXXFLAGS=["-mbmi", "-mlzcnt"])
+    if use_avx2:
+        env_godot_jolt.Prepend(CXXFLAGS=["-mavx2"])
+    if use_avx512:
+        env_godot_jolt.Prepend(CXXFLAGS=["-mavx512f", "-mavx512vl", "-mavx512dq"])
+    if not env["use_llvm"]:
+        env_godot_jolt.Prepend(CXXFLAGS=["-no-integrated-cpp"])
+
+
+# Setup jolt build
+env_thirdparty = env_godot_jolt.Clone()
+env_thirdparty.disable_warnings()
+
+if use_avx512:
+    env_thirdparty.Prepend(CPPDEFINES=["JPH_USE_AVX512"])
+if use_avx2:
+    env_thirdparty.Prepend(CPPDEFINES=["JPH_USE_AVX2"])
+if use_bmi1:
+    env_thirdparty.Prepend(CPPDEFINES=[
+        "JPH_USE_TZCNT",
+        "JPH_USE_LZCNT"
+    ])
+if use_fma3:
+    env_thirdparty.Prepend(CPPDEFINES=["JPH_USE_FMADD"])
+if use_f16c:
+    env_thirdparty.Prepend(CPPDEFINES=["JPH_USE_F16C"])
+if use_avx:
+    env_thirdparty.Prepend(CPPDEFINES=["JPH_USE_AVX"])
+if use_sse4_2:
+    env_thirdparty.Prepend(CPPDEFINES=["JPH_USE_SSE4_2", "JPH_USE_SSE4_1"])
+
+
+jolt_cpp_files = [
+    "thirdparty/jolt/Jolt/AABBTree/AABBTreeBuilder.cpp",
+    "thirdparty/jolt/Jolt/Core/Color.cpp",
+    "thirdparty/jolt/Jolt/Core/Factory.cpp",
+    "thirdparty/jolt/Jolt/Core/IssueReporting.cpp",
+    "thirdparty/jolt/Jolt/Core/JobSystemSingleThreaded.cpp",
+    "thirdparty/jolt/Jolt/Core/JobSystemThreadPool.cpp",
+    "thirdparty/jolt/Jolt/Core/JobSystemWithBarrier.cpp",
+    "thirdparty/jolt/Jolt/Core/LinearCurve.cpp",
+    "thirdparty/jolt/Jolt/Core/Memory.cpp",
+    "thirdparty/jolt/Jolt/Core/Profiler.cpp",
+    "thirdparty/jolt/Jolt/Core/RTTI.cpp",
+    "thirdparty/jolt/Jolt/Core/Semaphore.cpp",
+    "thirdparty/jolt/Jolt/Core/StringTools.cpp",
+    "thirdparty/jolt/Jolt/Core/TickCounter.cpp",
+    "thirdparty/jolt/Jolt/Geometry/ConvexHullBuilder.cpp",
+    "thirdparty/jolt/Jolt/Geometry/ConvexHullBuilder2D.cpp",
+    "thirdparty/jolt/Jolt/Geometry/Indexify.cpp",
+    "thirdparty/jolt/Jolt/Geometry/OrientedBox.cpp",
+    "thirdparty/jolt/Jolt/Math/Vec3.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStream.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStreamBinaryIn.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStreamBinaryOut.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStreamIn.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStreamOut.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStreamTextIn.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/ObjectStreamTextOut.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/SerializableObject.cpp",
+    "thirdparty/jolt/Jolt/ObjectStream/TypeDeclarations.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/Body.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/BodyAccess.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/BodyCreationSettings.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/BodyInterface.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/BodyManager.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/MassProperties.cpp",
+    "thirdparty/jolt/Jolt/Physics/Body/MotionProperties.cpp",
+    "thirdparty/jolt/Jolt/Physics/Character/Character.cpp",
+    "thirdparty/jolt/Jolt/Physics/Character/CharacterBase.cpp",
+    "thirdparty/jolt/Jolt/Physics/Character/CharacterVirtual.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/BroadPhase/BroadPhase.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/CastConvexVsTriangles.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/CastSphereVsTriangles.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/CollideConvexVsTriangles.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/CollideSphereVsTriangles.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/CollisionDispatch.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/CollisionGroup.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/EstimateCollisionResponse.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/GroupFilter.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/GroupFilterTable.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/ManifoldBetweenTwoFaces.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/NarrowPhaseQuery.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/NarrowPhaseStats.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/PhysicsMaterial.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/PhysicsMaterialSimple.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/BoxShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/CapsuleShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/CompoundShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/ConvexHullShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/ConvexShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/CylinderShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/DecoratedShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/HeightFieldShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/MeshShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/MutableCompoundShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/RotatedTranslatedShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/ScaledShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/Shape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/SphereShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/StaticCompoundShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/TaperedCapsuleShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/Shape/TriangleShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Collision/TransformedShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/ConeConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/Constraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/ConstraintManager.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/ContactConstraintManager.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/DistanceConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/FixedConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/GearConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/HingeConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/MotorSettings.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/PathConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/PathConstraintPath.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/PathConstraintPathHermite.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/PointConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/PulleyConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/RackAndPinionConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/SixDOFConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/SliderConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/SpringSettings.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/SwingTwistConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Constraints/TwoBodyConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/DeterminismLog.cpp",
+    "thirdparty/jolt/Jolt/Physics/IslandBuilder.cpp",
+    "thirdparty/jolt/Jolt/Physics/LargeIslandSplitter.cpp",
+    "thirdparty/jolt/Jolt/Physics/PhysicsLock.cpp",
+    "thirdparty/jolt/Jolt/Physics/PhysicsScene.cpp",
+    "thirdparty/jolt/Jolt/Physics/PhysicsSystem.cpp",
+    "thirdparty/jolt/Jolt/Physics/PhysicsUpdateContext.cpp",
+    "thirdparty/jolt/Jolt/Physics/Ragdoll/Ragdoll.cpp",
+    "thirdparty/jolt/Jolt/Physics/SoftBody/SoftBodyCreationSettings.cpp",
+    "thirdparty/jolt/Jolt/Physics/SoftBody/SoftBodyMotionProperties.cpp",
+    "thirdparty/jolt/Jolt/Physics/SoftBody/SoftBodyShape.cpp",
+    "thirdparty/jolt/Jolt/Physics/SoftBody/SoftBodySharedSettings.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/MotorcycleController.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/TrackedVehicleController.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleAntiRollBar.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleCollisionTester.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleConstraint.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleDifferential.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleEngine.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleTrack.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/VehicleTransmission.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/Wheel.cpp",
+    "thirdparty/jolt/Jolt/Physics/Vehicle/WheeledVehicleController.cpp",
+    "thirdparty/jolt/Jolt/RegisterTypes.cpp",
+    "thirdparty/jolt/Jolt/Renderer/DebugRenderer.cpp",
+    "thirdparty/jolt/Jolt/Renderer/DebugRendererPlayback.cpp",
+    "thirdparty/jolt/Jolt/Renderer/DebugRendererRecorder.cpp",    
+    "thirdparty/jolt/Jolt/Skeleton/SkeletalAnimation.cpp",
+    "thirdparty/jolt/Jolt/Skeleton/Skeleton.cpp",
+    "thirdparty/jolt/Jolt/Skeleton/SkeletonMapper.cpp",
+    "thirdparty/jolt/Jolt/Skeleton/SkeletonPose.cpp",
+    "thirdparty/jolt/Jolt/TriangleGrouper/TriangleGrouperClosestCentroid.cpp",
+    "thirdparty/jolt/Jolt/TriangleGrouper/TriangleGrouperMorton.cpp",
+    "thirdparty/jolt/Jolt/TriangleSplitter/TriangleSplitter.cpp",
+    "thirdparty/jolt/Jolt/TriangleSplitter/TriangleSplitterBinning.cpp",
+    "thirdparty/jolt/Jolt/TriangleSplitter/TriangleSplitterFixedLeafSize.cpp",
+    "thirdparty/jolt/Jolt/TriangleSplitter/TriangleSplitterLongestAxis.cpp",
+    "thirdparty/jolt/Jolt/TriangleSplitter/TriangleSplitterMean.cpp",
+]
+
+thirdparty_obj = []
+thirdparty_sources = [file for file in jolt_cpp_files]
+
+env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
+env.modules_sources += thirdparty_obj
+
+# Setup mimalloc
+
+env_mimalloc = env_godot_jolt.Clone()
+env_mimalloc.disable_warnings()
+
+mimalloc_sources = [
+    "thirdparty/mimalloc/src/alloc.c",
+    "thirdparty/mimalloc/src/alloc-aligned.c",
+    "thirdparty/mimalloc/src/alloc-posix.c",
+    "thirdparty/mimalloc/src/arena.c",
+    "thirdparty/mimalloc/src/bitmap.c",
+    "thirdparty/mimalloc/src/heap.c",
+    "thirdparty/mimalloc/src/init.c",
+    "thirdparty/mimalloc/src/options.c",
+    "thirdparty/mimalloc/src/os.c",
+    "thirdparty/mimalloc/src/page.c",
+    "thirdparty/mimalloc/src/random.c",
+    "thirdparty/mimalloc/src/segment.c",
+    "thirdparty/mimalloc/src/segment-map.c",
+    "thirdparty/mimalloc/src/stats.c",
+    "thirdparty/mimalloc/src/prim/prim.c"
+]
+
+mimalloc_obj = []
+
+env_thirdparty.add_source_files(mimalloc_obj, mimalloc_sources)
+env.modules_sources += mimalloc_obj
+
+# Finish setting up godot-jolt
+source_dir = "src/"
+
+env_godot_jolt.Prepend(CPPPATH=[source_dir])
+
+sources = []
+sources += Glob("src/containers/*.cpp")
+sources += Glob("src/joints/*.cpp")
+sources += Glob("src/misc/*.cpp")
+sources += Glob("src/objects/*.cpp")
+sources += Glob("src/servers/*.cpp")
+sources += Glob("src/shapes/*.cpp")
+sources += Glob("src/spaces/*.cpp")
+
+pch_file = "precompiled.hpp"
+
+if env.msvc:
+    env_godot_jolt.Prepend(CXXFLAGS=["/FI" + pch_file])
+else:
+    env_godot_jolt.Prepend(CXXFLAGS=["-include" + pch_file])
+
+env_godot_jolt.Prepend(CPPPATH=[source_dir])
+
+module_obj = []
+
+modulify.modulify(
+    env_godot_jolt,
+    "src/servers/jolt_physics_server_3d.hpp",
+    [
+        "_body_get_collision_exceptions",
+    ],
+    {
+        "_area_get_object_instance_id": {
+            "override_return_type": "ObjectID"
+        },
+        "_body_get_object_instance_id": {
+            "override_return_type": "ObjectID"
+        }
+    },
+    sources
+)
+
+modulify.modulify(
+    env_godot_jolt,
+    "src/joints/jolt_joint_gizmo_plugin_3d.hpp",
+    [
+        "_redraw",
+        "_create_materials",
+        "_create_redraw_timer"
+    ],
+    {
+    },
+    sources
+)
+
+modulify.modulify(
+    env_godot_jolt,
+    "src/objects/jolt_physics_direct_body_state_3d.hpp",
+    [
+    ],
+    {
+        "_get_contact_collider_id": {
+            "override_return_type": "ObjectID"
+        }
+    },
+    sources
+)
+
+modulify.modulify(
+    env_godot_jolt,
+    "src/spaces/jolt_physics_direct_space_state_3d.hpp",
+    [
+        "_intersect_ray",
+        "_intersect_point",
+        "_intersect_shape",
+        "_cast_motion",
+        "_collide_shape",
+        "_rest_info",
+        "_get_closest_point_to_object_volume"
+    ],
+    {
+    },
+    sources
+)
+
+env_godot_jolt.add_source_files(module_obj, sources)
+env_godot_jolt.add_source_files(module_obj, "*.cpp")
+
+env.modules_sources += module_obj
+
+

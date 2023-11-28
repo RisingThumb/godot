@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shapes/jolt_custom_shape_type.hpp"
+#include "modules/jolt/src/shapes/jolt_custom_ray_shape.hpp"
 
 class JoltCustomRayShapeSettings final : public JPH::ConvexShapeSettings {
 public:

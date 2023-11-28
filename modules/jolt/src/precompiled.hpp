@@ -14,63 +14,11 @@
 #pragma warning(disable : 4245 4365)
 #endif // _MSC_VER
 
-#include <gdextension_interface.h>
-
-#include <godot_cpp/classes/engine.hpp>
-#include <godot_cpp/classes/geometry_instance3d.hpp>
-#include <godot_cpp/classes/object.hpp>
-#include <godot_cpp/classes/os.hpp>
-#include <godot_cpp/classes/physics_body3d.hpp>
-#include <godot_cpp/classes/physics_direct_body_state3d_extension.hpp>
-#include <godot_cpp/classes/physics_direct_space_state3d_extension.hpp>
-#include <godot_cpp/classes/physics_server3d_extension.hpp>
-#include <godot_cpp/classes/physics_server3d_extension_motion_result.hpp>
-#include <godot_cpp/classes/physics_server3d_extension_ray_result.hpp>
-#include <godot_cpp/classes/physics_server3d_extension_shape_rest_info.hpp>
-#include <godot_cpp/classes/physics_server3d_extension_shape_result.hpp>
-#include <godot_cpp/classes/physics_server3d_manager.hpp>
-#include <godot_cpp/classes/physics_server3d_rendering_server_handler.hpp>
-#include <godot_cpp/classes/project_settings.hpp>
-#include <godot_cpp/classes/worker_thread_pool.hpp>
-#include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/core/defs.hpp>
-#include <godot_cpp/core/error_macros.hpp>
-#include <godot_cpp/core/math.hpp>
-#include <godot_cpp/core/memory.hpp>
-#include <godot_cpp/core/object.hpp>
-#include <godot_cpp/godot.hpp>
-#include <godot_cpp/templates/hashfuncs.hpp>
-#include <godot_cpp/variant/builtin_types.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
-#include <godot_cpp/variant/variant.hpp>
 
 #ifdef GDJ_CONFIG_EDITOR
-
-#include <godot_cpp/classes/control.hpp>
-#include <godot_cpp/classes/editor_file_dialog.hpp>
-#include <godot_cpp/classes/editor_interface.hpp>
-#include <godot_cpp/classes/editor_node3d_gizmo.hpp>
-#include <godot_cpp/classes/editor_node3d_gizmo_plugin.hpp>
-#include <godot_cpp/classes/editor_plugin.hpp>
-#include <godot_cpp/classes/editor_settings.hpp>
-#include <godot_cpp/classes/engine_debugger.hpp>
-#include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/popup_menu.hpp>
-#include <godot_cpp/classes/standard_material3d.hpp>
-#include <godot_cpp/classes/theme.hpp>
-#include <godot_cpp/classes/time.hpp>
-#include <godot_cpp/classes/timer.hpp>
-#include <godot_cpp/templates/spin_lock.hpp>
-
 #endif // GDJ_CONFIG_EDITOR
 
 #ifdef JPH_DEBUG_RENDERER
-
-#include <godot_cpp/classes/camera3d.hpp>
-#include <godot_cpp/classes/rendering_server.hpp>
-#include <godot_cpp/classes/standard_material3d.hpp>
-#include <godot_cpp/classes/viewport.hpp>
-#include <godot_cpp/classes/world3d.hpp>
 
 #endif // JPH_DEBUG_RENDERER
 
@@ -141,26 +89,24 @@
 #include <variant>
 #include <vector>
 
-using namespace godot;
-
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif // _MSC_VER
 
-#include "containers/free_list.hpp"
-#include "containers/hash_map.hpp"
-#include "containers/hash_set.hpp"
-#include "containers/inline_vector.hpp"
-#include "containers/local_vector.hpp"
-#include "containers/rid_owner.hpp"
-#include "misc/bind_macros.hpp"
-#include "misc/error_macros.hpp"
-#include "misc/gdclass_macros.hpp"
-#include "misc/jolt_stream_wrappers.hpp"
-#include "misc/math.hpp"
-#include "misc/scope_guard.hpp"
-#include "misc/type_conversions.hpp"
-#include "misc/utility_functions.hpp"
-#include "misc/utility_macros.hpp"
+#include "modules/jolt/src/containers/free_list.hpp"
+#include "modules/jolt/src/containers/hash_map.hpp"
+#include "modules/jolt/src/containers/hash_set.hpp"
+#include "modules/jolt/src/containers/inline_vector.hpp"
+#include "modules/jolt/src/containers/local_vector.hpp"
+#include "modules/jolt/src/containers/rid_owner.hpp"
+#include "modules/jolt/src/misc/bind_macros.hpp"
+#include "modules/jolt/src/misc/error_macros.hpp"
+#include "modules/jolt/src/misc/gdclass_macros.hpp"
+#include "modules/jolt/src/misc/jolt_stream_wrappers.hpp"
+#include "modules/jolt/src/misc/math.hpp"
+#include "modules/jolt/src/misc/scope_guard.hpp"
+#include "modules/jolt/src/misc/type_conversions.hpp"
+#include "modules/jolt/src/misc/utility_functions.hpp"
+#include "modules/jolt/src/misc/utility_macros.hpp"
 
 // NOLINTEND(readability-duplicate-include)

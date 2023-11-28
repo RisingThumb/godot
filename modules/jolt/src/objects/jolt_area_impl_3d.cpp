@@ -1,10 +1,11 @@
-#include "jolt_area_impl_3d.hpp"
+#include "modules/jolt/src/objects/jolt_area_impl_3d.hpp"
 
 #include "objects/jolt_body_impl_3d.hpp"
 #include "objects/jolt_group_filter.hpp"
 #include "servers/jolt_project_settings.hpp"
 #include "spaces/jolt_broad_phase_layer.hpp"
 #include "spaces/jolt_space_3d.hpp"
+#include "servers/physics_server_3d.h"
 
 namespace {
 

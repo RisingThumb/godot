@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/math/transform_3d.h"
+
 class JoltBodyImpl3D;
 class JoltSpace3D;
 

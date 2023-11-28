@@ -1,6 +1,7 @@
 #pragma once
 
-#include "joints/jolt_joint_impl_3d.hpp"
+#include "modules/jolt/src/joints/jolt_joint_impl_3d.hpp"
+#include "modules/jolt/src/objects/jolt_body_impl_3d.hpp"
 
 class JoltBodyImpl3D;
 class JoltSpace3D;

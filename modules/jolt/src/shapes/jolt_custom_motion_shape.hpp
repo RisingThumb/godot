@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shapes/jolt_custom_shape_type.hpp"
+#include "modules/jolt/src/misc/error_macros.hpp"
 
 class JoltCustomMotionShape final : public JPH::ConvexShape {
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "joints/jolt_joint_3d.hpp"
+#include "scene/3d/physics_body_3d.h"
 #include "servers/jolt_physics_server_3d.hpp"
 
 class JoltSliderJoint3D final : public JoltJoint3D {

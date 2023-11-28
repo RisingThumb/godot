@@ -1,5 +1,8 @@
 #pragma once
 
+#include "modules/jolt/src/misc/gdclass_macros.hpp"
+#include "scene/3d/node_3d.h"
+
 class JoltPhysicsServer3D;
 
 class JoltJoint3D : public Node3D {

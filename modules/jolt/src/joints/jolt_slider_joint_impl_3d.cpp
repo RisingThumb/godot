@@ -3,6 +3,8 @@
 #include "objects/jolt_body_impl_3d.hpp"
 #include "spaces/jolt_space_3d.hpp"
 
+#include "misc/error_macros.hpp"
+
 namespace {
 
 constexpr double DEFAULT_LINEAR_LIMIT_SOFTNESS = 1.0;
