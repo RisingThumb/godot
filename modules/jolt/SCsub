@@ -22,7 +22,7 @@ build_type = "Debug"
 cmake_opts += " -DCROSS_PLATFORM_DETERMINISTIC=1 "
 cmake_opts += " -DDOUBLE_PRECISION=1 "
 
-if env["platform"] == "linuxbsd":
+if env["platform"] == "linuxbsd" or env["platform"] == "macos":
     compiler = "clang++"
 
     make_file_type = "\"Unix Makefiles\""

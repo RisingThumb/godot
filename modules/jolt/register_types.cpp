@@ -25,7 +25,7 @@
 #include "core/config/engine.h"
 #include "jolt.h"
 
-void initialize_jolt_physics_sync_module(ModuleInitializationLevel p_level) {
+void initialize_jolt_module(ModuleInitializationLevel p_level) {
 	if (p_level != ModuleInitializationLevel::MODULE_INITIALIZATION_LEVEL_SERVERS) {
 		return;
 	}
@@ -37,7 +37,7 @@ void initialize_jolt_physics_sync_module(ModuleInitializationLevel p_level) {
 			Engine::Singleton("Jolt", Jolt::singleton()));
 }
 
-void uninitialize_jolt_physics_sync_module(ModuleInitializationLevel p_level) {
+void uninitialize_jolt_module(ModuleInitializationLevel p_level) {
 	if (p_level != ModuleInitializationLevel::MODULE_INITIALIZATION_LEVEL_SERVERS) {
 		return;
 	}
