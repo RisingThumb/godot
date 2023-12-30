@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/jrouwe/JoltPhysics.git
+	branch = ad9cd403cc032bf56442803616d1081788df9d96
+	commit = ad9cd403cc032bf56442803616d1081788df9d96
+	parent = 95587f89c30fb4e334d4fa6f786d8a43cc717ce9
+	method = merge
+	cmdver = 0.4.6

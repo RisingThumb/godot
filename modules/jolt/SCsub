@@ -1,0 +1,68 @@
+import os
+import sys
+import multiprocessing
+
+Import('env')
+Import('env_modules')
+
+# Build the JoltPhysics static library using CMake
+
+compiler = "clang++"
+jolt_build_dir = ""
+out_build_dir = ""
+make_file_type = ""
+cpu_count = multiprocessing.cpu_count()
+
+cmake_opts = ""
+
+# TODO please change this to one of, to release the game: Release, Distribution, ReleaseUBSAN, ReleaseASAN, ReleaseCoverage
+build_type = "Debug"
+
+# Add options
+cmake_opts += " -DCROSS_PLATFORM_DETERMINISTIC=1 "
+cmake_opts += " -DDOUBLE_PRECISION=1 "
+
+if env["platform"] == "linuxbsd":
+    compiler = "clang++"
+
+    make_file_type = "\"Unix Makefiles\""
+
+    # NOTE: See `cmake_linux_clang_gcc.sh`
+    jolt_build_dir = os.path.join(".", "thirdparty", "JoltPhysics", "Build")
+    out_build_dir = os.path.join(".", "JOLT_BUILD", "LINUX")
+
+#elif env["platform"] == "windows":
+#    # TODO add windows support
+#    pass
+#
+#elif env["platform"] == "osx":
+#    # TODO add OSX support
+#    pass
+
+else:
+    exit("Error, platform `" + env["platform"] + "`` not supported?")
+
+cmake_command = "cmake -S {} -B {} -G {} -DCMAKE_BUILD_TYPE={} -DCMAKE_CXX_COMPILER={} {}".format(jolt_build_dir, out_build_dir, make_file_type, build_type, compiler, cmake_opts)
+make_command = "make -C {} -j {}".format(out_build_dir, cpu_count)
+
+if env.Execute(cmake_command):
+    exit("JoltPhysics Cmake module compilation failed.")
+
+if env.Execute(make_command):
+    exit("JoltPhysics Make module compilation failed.")
+
+# Now setup the JoltPhysics module compilation
+jolt_physics_sync_path = os.getcwd()
+
+jolt_physics_sync_module = env_modules.Clone()
+
+# Define the same MACROS defined on the physics sync module.
+jolt_physics_sync_module.Append(CPPDEFINES=[('JPH_CROSS_PLATFORM_DETERMINISTIC', 1)])
+jolt_physics_sync_module.Append(CPPDEFINES=[('JPH_DOUBLE_PRECISION', 1)])
+
+jolt_physics_sync_module.Prepend(CPPPATH=[os.path.join(jolt_physics_sync_path, "thirdparty", "JoltPhysics")])
+
+env.Prepend(LIBPATH=[os.path.join(jolt_physics_sync_path, out_build_dir)])
+env.Prepend(LIBS=["Jolt"])
+
+jolt_physics_sync_module.add_source_files(env.modules_sources, "*.cpp")
