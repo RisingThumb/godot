@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot_svg_mesh.git
 	branch = main
-	commit = 16c699bae56cfd23f79b2c59934bac5ad32f8f19
-	parent = 4e990cd7e51d17cf24f854cc33b2715eaa27200f
+	commit = 11b23a5281bb6d58a70528e62fd635c8a5e558f4
+	parent = 5d164ac545aa09e0eb1dfd32cb7857ade9c1f68e
 	method = merge
 	cmdver = 0.4.6
