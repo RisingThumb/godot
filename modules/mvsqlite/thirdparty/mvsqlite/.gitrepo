@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/mvsqlite
 	branch = main
-	commit = a4861d946ceeddbef924995c6e803fd7219a6ebd
-	parent = 94995677b8de8cb14686573c593ea53b56f21b3d
+	commit = c66e0b064f120b4eb30d66877b19e8a937d28ea8
+	parent = cd0489abf763bd1b3aa86e7f8e0bbc1888893d8f
 	method = merge
 	cmdver = 0.4.6
