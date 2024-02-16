@@ -1,12 +1,10 @@
 import os
 import subprocess
 
-
 Import("env")
 
 env.Append(
     CPPDEFINES=[("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1"],
-    LIBS=["mvsqlite"],
 )
 
 env["builtin_zstd"] = False
@@ -20,6 +18,7 @@ source_files = [
     "src/*.cpp",
     "*.cpp",
 ]
+
 for source_file in source_files:
     env_thirdparty.add_source_files(env_thirdparty.modules_sources, source_file)
 
@@ -27,28 +26,21 @@ env.modules_sources += env_thirdparty.modules_sources
 
 if env["platform"] == "windows":
     target = ""
-    if env.msvc:
-        target = "x86_64-pc-windows-msvc"
-        env.Append(
-            LIBS=[
-                File(
-                    "thirdparty/mvsqlite/target/x86_64-pc-windows-msvc/release/mvsqlite.lib"
-                )
-            ]
-        )
-    else:
-        target = "x86_64-pc-windows-gnu"
-        env.Append(
-            LIBS=[
-                File(
-                    "thirdparty/mvsqlite/target/x86_64-pc-windows-gnu/release/libmvsqlite.a"
-                )
-            ]
-        )
+    lib_path = ""
+    target = "x86_64-pc-windows-gnu"
+    env.Append(
+        LIBS=[
+            File(
+                "thirdparty/mvsqlite/target/x86_64-pc-windows-gnu/release/libmvsqlite.a"
+            )
+        ]
+    )
+
     env.Append(
         LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
         LIBS=["ws2_32", "ntdll", "userenv"],
     )
+
     subprocess.check_output(
         ["rustup", "target", "add", target], stderr=subprocess.STDOUT
     )
@@ -62,6 +54,14 @@ if env["platform"] == "windows":
         env=os_env,
     )
 else:
-    env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
+    env.Append(
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"],
+        CPPDEFINES=[
+            ("SQLITE_ENABLE_RBU", 1),
+            ("SQLITE_USE_URI", 1),
+            "SQLITE_ENABLE_JSON1",
+        ],
+        LIBS=["mvsqlite"],
+    )
 
     subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
