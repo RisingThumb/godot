@@ -267,26 +267,26 @@ private:
 	TovePaintData _data;
 
 public:
-	PaintFeed(const PaintFeed &feed) :
-		PaintFeedBase(feed.path, _data, feed.scale, feed.CHANGED_STYLE) {
+	PaintFeed(const PaintFeed &feed_val) :
+		PaintFeedBase(feed_val.path, _data, feed_val.scale, feed_val.CHANGED_STYLE) {
 	}
 
-	PaintFeed(const PathRef &path, float scale, ToveChangeFlags changed) :
-		PaintFeedBase(path, _data, scale, changed) {
+	PaintFeed(const PathRef &path_val, float scale_val, ToveChangeFlags changed_val) :
+		PaintFeedBase(path_val, _data, scale_val, changed_val) {
 	}
 };
 
 class LinePaintFeed : public PaintFeedBase {
 public:
 	LinePaintFeed(const PathRef &path_val, TovePaintData &data_val, float scale_val) :
-		PaintFeedBase(path, data, scale, CHANGED_LINE_STYLE) {
+		PaintFeedBase(path_val, data_val, scale_val, CHANGED_LINE_STYLE) {
 	}
 };
 
 class FillPaintFeed : public PaintFeedBase {
 public:
 	FillPaintFeed(const PathRef &path_val, TovePaintData &data_val, float scale_val) :
-		PaintFeedBase(path, data, scale, CHANGED_FILL_STYLE) {
+		PaintFeedBase(path_val, data_val, scale_val, CHANGED_FILL_STYLE) {
 	}
 };
 
