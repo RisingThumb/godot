@@ -7,11 +7,7 @@ env.Append(
     LIBS=["mvsqlite"],
 )
 
-target = ""
-if env["platform"] == "windows" and env["use_mingw"]:
-    target = "x86_64-pc-windows-gnu"
-elif env["platform"] == "windows" and not env["use_mingw"]:
-    target = "x86_64-pc-windows-msvc"
+target = "x86_64-pc-windows-msvc"
 
 if env["platform"] == "windows":
     env.Append(
@@ -39,7 +35,7 @@ env.modules_sources += env_thirdparty.modules_sources
 
 if env["platform"] == "windows":
     new_env = os.environ.copy()
-    if env["use_mingw"] and env["use_llvm"]:
+    if env["use_mingw"]:
         new_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
     subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite", env=new_env)
 else:

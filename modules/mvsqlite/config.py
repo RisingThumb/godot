@@ -12,14 +12,8 @@ def can_build(env, platform):
     except subprocess.CalledProcessError:
         print("Cargo or Rustup not found. mvsqlite build skipped.")
         if platform == "windows":
-            print("Use `scoop install rustup-gnu` and `rustup target add x86_64-pc-windows-gnu` to install rust.")
+            print("Use `scoop install rustup-gnu` and `rustup target add x86_64-pc-windows-msvc` to install rust.")
         return False
-
-    if platform == "windows":
-        use_mingw = os.environ.get('use_mingw', '0').lower() in ('1', 'true', 'yes', 'on')
-        if not use_mingw:
-            print("MSVC found. mvsqlite build skipped.")
-            return False
 
     return True
 
