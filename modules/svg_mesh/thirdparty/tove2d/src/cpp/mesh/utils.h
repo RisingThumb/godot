@@ -29,9 +29,9 @@ private:
     const uint16_t stride;
 
 public:
-	inline Vertices(void *vertices, uint16_t stride, size_t i0 = 0) :
-        vertices(reinterpret_cast<uint8_t*>(vertices) + (i0 * stride)),
-        stride(stride) {
+	inline Vertices(void *p_vertices, uint16_t p_stride, size_t p_i0 = 0) :
+        vertices(reinterpret_cast<uint8_t*>(p_vertices) + (p_i0 * p_stride)),
+        stride(p_stride) {
 	}
 
 	inline Vertices(const Vertices &v) :
