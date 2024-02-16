@@ -162,8 +162,8 @@ protected:
 	}
 
 public:
-	AbstractPaintFeed(TovePaintData &data, float scale) :
-		paintData(data), scale(scale) {
+	AbstractPaintFeed(TovePaintData &data_val, float scale_val) :
+		paintData(data_val), scale(scale_val) {
 
 		paintData.style = PAINT_UNDEFINED;
 	}

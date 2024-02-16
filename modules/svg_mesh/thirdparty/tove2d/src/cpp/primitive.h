@@ -51,8 +51,8 @@ public:
 	inline LinePrimitive() {
 	}
 
-	inline LinePrimitive(float x, float y) :
-		x(x), y(y) {
+	inline LinePrimitive(float x_val, float y_val) :
+		x(x_val), y(y_val) {
 	}
 
 	inline int size() const {
