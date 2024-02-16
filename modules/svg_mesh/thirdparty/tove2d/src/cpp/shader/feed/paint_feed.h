@@ -278,14 +278,14 @@ public:
 
 class LinePaintFeed : public PaintFeedBase {
 public:
-	LinePaintFeed(const PathRef &path, TovePaintData &data, float scale) :
+	LinePaintFeed(const PathRef &path_val, TovePaintData &data_val, float scale_val) :
 		PaintFeedBase(path, data, scale, CHANGED_LINE_STYLE) {
 	}
 };
 
 class FillPaintFeed : public PaintFeedBase {
 public:
-	FillPaintFeed(const PathRef &path, TovePaintData &data, float scale) :
+	FillPaintFeed(const PathRef &path_val, TovePaintData &data_val, float scale_val) :
 		PaintFeedBase(path, data, scale, CHANGED_FILL_STYLE) {
 	}
 };
