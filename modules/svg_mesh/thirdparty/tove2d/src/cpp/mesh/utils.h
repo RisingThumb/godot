@@ -20,7 +20,7 @@ struct vec2 {
 	float x;
 	float y;
 
-	inline vec2(float x, float y) : x(x), y(y) { };
+	inline vec2(float p_x, float p_y) : x(p_x), y(p_y) { };
 };
 
 class Vertices {

@@ -151,7 +151,7 @@ public:
 	inline EllipsePrimitive() {
 	}
 
-	EllipsePrimitive(float cx, float cy, float rx, float ry) : cx(cx), cy(cy), rx(rx), ry(ry) {
+	EllipsePrimitive(float p_cx, float p_cy, float p_rx, float p_ry) : cx(p_cx), cy(p_cy), rx(p_rx), ry(p_ry) {
 	}
 
 	inline int size() const {
