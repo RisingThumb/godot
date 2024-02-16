@@ -1,42 +1,57 @@
-Import("env")
-import subprocess
 import os
-
-env.Append(
-    CPPDEFINES=[("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1"],
-    LIBS=["mvsqlite"],
-)
+import subprocess
 
 target = "x86_64-pc-windows-msvc"
 
-if env["platform"] == "windows":
-    env.Append(
-        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
-    )
-    subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
-else:
-    env.Append(
-        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"],
-    )
+Import("env")
+
+env.Append(
+    CPPDEFINES=[
+        ("SQLITE_ENABLE_RBU", 1),
+        ("SQLITE_USE_URI", 1),
+        "SQLITE_ENABLE_JSON1"
+    ],
+    LIBS=["mvsqlite"],
+)
 
 env["builtin_zstd"] = False
-
-if env["platform"] == "windows":
-    env.Append(LIBS=["ws2_32", "ntdll", "userenv"])
 
 env_thirdparty = env.Clone()
 env_thirdparty.disable_warnings()
 
-source_files = ["thirdparty/sqlite/*.c", "thirdparty/spmemvfs/*.c", "src/*.cpp", "*.cpp"]
+source_files = [
+    "thirdparty/sqlite/*.c",
+    "thirdparty/spmemvfs/*.c",
+    "src/*.cpp",
+    "*.cpp"
+]
 for source_file in source_files:
     env_thirdparty.add_source_files(env_thirdparty.modules_sources, source_file)
 
 env.modules_sources += env_thirdparty.modules_sources
 
 if env["platform"] == "windows":
+    env.Append(
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
+        LIBS=["ws2_32", "ntdll", "userenv"]
+    )
+
+    subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
+
     new_env = os.environ.copy()
-    if env["use_mingw"]:
-        new_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
-    subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite", env=new_env)
+    new_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
+
+    subprocess.run(
+        ["cargo", "build", "--release", "--target", target],
+        cwd="thirdparty/mvsqlite/mvsqlite",
+        env=new_env
+    )
 else:
-    subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
+    env.Append(
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"]
+    )
+
+    subprocess.run(
+        ["cargo", "build", "--release"],
+        cwd="thirdparty/mvsqlite/mvsqlite"
+    )
