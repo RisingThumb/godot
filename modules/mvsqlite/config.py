@@ -1,5 +1,3 @@
-# config.py
-
 import subprocess
 import os
 
@@ -7,6 +5,7 @@ import os
 def can_build(env, platform):
     if platform == "ios" or platform == "web" or platform == "android":
         return False
+
     try:
         subprocess.check_output(["rustup", "--version"], stderr=subprocess.STDOUT)
         subprocess.check_output(["cargo", "--version"], stderr=subprocess.STDOUT)
@@ -15,6 +14,13 @@ def can_build(env, platform):
         if platform == "windows":
             print("Use `scoop install rustup-gnu` and `rustup target add x86_64-pc-windows-gnu` to install rust.")
         return False
+
+    if platform == "windows":
+        use_mingw = os.environ.get('use_mingw', '0').lower() in ('1', 'true', 'yes', 'on')
+        if not use_mingw:
+            print("MSVC found. mvsqlite build skipped.")
+            return False
+
     return True
 
 
