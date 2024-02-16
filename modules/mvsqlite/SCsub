@@ -1,7 +1,6 @@
 import os
 import subprocess
 
-target = "x86_64-pc-windows-msvc"
 
 Import("env")
 
@@ -22,17 +21,23 @@ for source_file in source_files:
 env.modules_sources += env_thirdparty.modules_sources
 
 if env["platform"] == "windows":
+    target = ""
+    if env.msvc: 
+        target = "x86_64-pc-windows-msvc"
+        env.Append(LIBS=[File('thirdparty/mvsqlite/target/x86_64-pc-windows-msvc/release/mvsqlite.lib')])
+    else:
+        target = "x86_64-pc-windows-gnu"
+        env.Append(LIBS=[File('thirdparty/mvsqlite/target/x86_64-pc-windows-gnu/release/libmvsqlite.a')])
     env.Append(
         LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
         LIBS=["ws2_32", "ntdll", "userenv"],
     )
-
     subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
 
-    new_env = os.environ.copy()
-    new_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
+    os_env = os.environ.copy()
+    os_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
 
-    subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite", env=new_env)
+    subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite", env=os_env)
 else:
     env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
 
