@@ -453,14 +453,16 @@ bool VGPath::_set(const StringName &p_name, const Variant &p_value) {
 		if (subwhat == "points") {
 			PackedVector2Array pts = p_value;
 			const int n = pts.size();
-			float *buf = new float[n * 2];
-			for (int i = 0; i < n; i++) {
-				const Vector2 &p = pts[i];
-				buf[2 * i + 0] = p.x;
-				buf[2 * i + 1] = p.y;
+			if (n > 0) {
+				float *buf = new float[n * 2];
+				for (int i = 0; i < n; i++) {
+					const Vector2 &p = pts[i];
+					buf[2 * i + 0] = p.x;
+					buf[2 * i + 1] = p.y;
+				}
+				tove_subpath->setPoints(buf, n, false);
+				delete[] buf;
 			}
-			tove_subpath->setPoints(buf, n, false);
-			delete[] buf;
 		} else {
 			return false;
 		}
