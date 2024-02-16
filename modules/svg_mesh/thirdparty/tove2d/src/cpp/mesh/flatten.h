@@ -165,8 +165,8 @@ public:
 		clipper = curveFlattener.configure(extent);
 	}
 
-	AdaptiveFlattener(const CurveFlattener &curveFlattener) :
-		curveFlattener(curveFlattener) {
+	AdaptiveFlattener(const CurveFlattener &p_curveFlattener) :
+		curveFlattener(p_curveFlattener) {
 	}
 };
 
