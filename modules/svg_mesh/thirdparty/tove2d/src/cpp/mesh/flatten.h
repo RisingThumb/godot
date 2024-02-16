@@ -67,10 +67,10 @@ public:
 	}
 
 	DefaultCurveFlattener(
-		float resolution,
-		int recursionLimit) :
-		resolution(resolution),
-		recursionLimit(std::min(toveMaxFlattenSubdivisions, recursionLimit)),
+		float p_resolution,
+		int p_recursionLimit) :
+		resolution(p_resolution),
+		recursionLimit(std::min(toveMaxFlattenSubdivisions, p_recursionLimit)),
 		tolerance(0.0f) {
 	}
 
