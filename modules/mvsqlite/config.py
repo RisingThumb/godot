@@ -3,7 +3,7 @@ import os
 
 
 def can_build(env, platform):
-    if platform == "ios" or platform == "web" or platform == "android":
+    if platform in ("ios", "web", "android"):
         return False
 
     try:
@@ -17,8 +17,15 @@ def can_build(env, platform):
 
     if platform == "windows":
         use_mingw = env["use_mingw"]
-        if not use_mingw:
-            print("MSVC found. mvsqlite build skipped.")
+        # Check if MSVC target is installed
+        try:
+            targets_output = subprocess.check_output(["rustup", "target", "list", "--installed"], stderr=subprocess.STDOUT)
+            installed_targets = targets_output.decode().splitlines()
+            if "x86_64-pc-windows-msvc" in installed_targets and not use_mingw:
+                print("MSVC target is installed. mvsqlite build skipped.")
+                return False
+        except subprocess.CalledProcessError:
+            print("Failed to list installed rustup targets.")
             return False
 
     return True
