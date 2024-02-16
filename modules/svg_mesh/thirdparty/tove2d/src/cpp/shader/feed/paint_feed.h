@@ -192,16 +192,16 @@ protected:
 
 public:
 	PaintFeedBase(
-		const PathRef &path,
-		TovePaintData &data,
-		float scale,
-		ToveChangeFlags CHANGED_STYLE) :
+		const PathRef &path_val,
+		TovePaintData &data_val,
+		float scale_val,
+		ToveChangeFlags CHANGED_STYLE_VAL) :
 
-		AbstractPaintFeed(data, scale),
-		path(path),
-		CHANGED_STYLE(CHANGED_STYLE) {
+		AbstractPaintFeed(data_val, scale_val),
+		path(path_val),
+		CHANGED_STYLE(CHANGED_STYLE_VAL) {
 
-		path->addObserver(this);
+		path_val->addObserver(this);
 		changed = false;
 
 		std::memset(&paintData, 0, sizeof(paintData));
