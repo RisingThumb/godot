@@ -34,15 +34,15 @@ env_csg.Append(LINKFLAGS=["-fno-duplicated-branches"])
 thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 env_csg.Prepend(
     CPPPATH=[
-        "thirdparty/thrust",
+        "#thirdparty/thrust",
+        "#thirdparty/glm",
         thirdparty_dir + "src/polygon/include",
         thirdparty_dir + "src/manifold/include",
         thirdparty_dir + "src/utilities/include",
         thirdparty_dir + "src/collider/include",
         thirdparty_dir + "src/third_party",
         thirdparty_dir + "src/third_party/graphlite/include",
-        thirdparty_dir + "src/third_party/thrust",
-        thirdparty_dir + "src/third_party/glm",
+        thirdparty_dir + "src/third_party/quickhull",
     ]
 )
 env_thirdparty = env_csg.Clone()
