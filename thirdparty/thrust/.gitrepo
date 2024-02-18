@@ -5,8 +5,8 @@
 ;
 [subrepo]
 	remote = https://github.com/NVIDIA/thrust.git
-	branch = 756c5afc0750f1413da05bd2b6505180e84c53d4
-	commit = 756c5afc0750f1413da05bd2b6505180e84c53d4
-	parent = 8db0d71506d64157092369419b89dfe53a4d92be
+	branch = 2.1.0
+	commit = 3cd56842c94de4926157f6ccdfbbf03ef7e5d5dc
+	parent = 02499d76d4b77cf561ebda190df49135b5d5f3c7
 	method = merge
 	cmdver = 0.4.6
