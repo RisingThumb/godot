@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/wjakob/nanobind
+	branch = 1a309ba444a47e081dc6213d72345a2fbbd20795
+	commit = 1a309ba444a47e081dc6213d72345a2fbbd20795
+	parent = ce8588018c333d10317132d7b8916ad50144ca48
+	method = merge
+	cmdver = 0.4.6

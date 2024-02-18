@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/manifold.git
+	branch = godot
+	commit = d8ddf4bdcb48452570ef679ef30331266c785d51
+	parent = 0082225e49657e728ba1b35670613b0b92dad93f
+	method = merge
+	cmdver = 0.4.6
