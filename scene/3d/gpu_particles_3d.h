@@ -57,6 +57,12 @@ public:
 		MAX_DRAW_PASSES = 4
 	};
 
+	enum EmissionSources {
+		SURFACE_POINTS,
+		SURFACE_POINTS_AND_NORMAL,
+		VOLUME
+	};
+
 private:
 	RID particles;
 
@@ -76,6 +82,7 @@ private:
 	int fixed_fps = 0;
 	bool fractional_delta = false;
 	bool interpolate = true;
+	NodePath node_selected;
 	NodePath sub_emitter;
 	real_t collision_base_size = 0.01;
 
@@ -103,9 +110,13 @@ private:
 	void _skinning_changed();
 
 protected:
+	Vector<Face3> geometry;
+
 	static void _bind_methods();
 	void _notification(int p_what);
 	void _validate_property(PropertyInfo &p_property) const;
+	bool _generate(Vector<Vector3> &points, Vector<Vector3> &normals, int &emission_amount, int &emission_fill);
+	void set_node_selected(const NodePath &p_path);
 
 public:
 	AABB get_aabb() const override;
@@ -166,6 +177,8 @@ public:
 
 	PackedStringArray get_configuration_warnings() const override;
 
+	void generate_emission_points(const NodePath &p_path, int p_emission_amount, int p_emission_fill);
+
 	void set_sub_emitter(const NodePath &p_path);
 	NodePath get_sub_emitter() const;
 
@@ -197,5 +210,6 @@ public:
 VARIANT_ENUM_CAST(GPUParticles3D::DrawOrder)
 VARIANT_ENUM_CAST(GPUParticles3D::TransformAlign)
 VARIANT_ENUM_CAST(GPUParticles3D::EmitFlags)
+VARIANT_ENUM_CAST(GPUParticles3D::EmissionSources)
 
 #endif // GPU_PARTICLES_3D_H
