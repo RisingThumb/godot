@@ -35,6 +35,7 @@
 #include "scene/3d/light_3d.h"
 #include "scene/3d/lightmapper.h"
 #include "scene/3d/visual_instance_3d.h"
+#include "scene/resources/image_texture.h"
 
 class Sky;
 class CameraAttributes;
@@ -304,7 +305,11 @@ public:
 
 	AABB get_aabb() const override;
 
-	BakeError bake(Node *p_from_node, String p_image_data_path = "", Lightmapper::BakeStepFunc p_bake_step = nullptr, void *p_bake_userdata = nullptr);
+	static bool _dummy_bake_func_step(float p_progress, const String &p_description, void *, bool p_refresh);
+
+	BakeError bake(Node *p_from_node, String p_image_data_path = "");
+
+	BakeError _bake(Node *p_from_node, String p_image_data_path = "", Lightmapper::BakeStepFunc p_bake_step = nullptr, void *p_bake_userdata = nullptr);
 
 	virtual PackedStringArray get_configuration_warnings() const override;
 
