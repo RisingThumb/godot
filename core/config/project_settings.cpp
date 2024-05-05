@@ -878,13 +878,13 @@ Error ProjectSettings::_save_settings_binary(const String &p_file, const RBMap<S
 		file->store_pascal_string(key);
 
 		int len;
-		err = encode_variant(p_custom_features, nullptr, len, false);
+		err = encode_variant(p_custom_features, nullptr, len, true);
 		ERR_FAIL_COND_V(err != OK, err);
 
 		Vector<uint8_t> buff;
 		buff.resize(len);
 
-		err = encode_variant(p_custom_features, buff.ptrw(), len, false);
+		err = encode_variant(p_custom_features, buff.ptrw(), len, true);
 		ERR_FAIL_COND_V(err != OK, err);
 		file->store_32(len);
 		file->store_buffer(buff.ptr(), buff.size());
