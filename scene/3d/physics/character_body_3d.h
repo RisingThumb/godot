@@ -47,25 +47,55 @@ public:
 		PLATFORM_ON_LEAVE_ADD_UPWARD_VELOCITY,
 		PLATFORM_ON_LEAVE_DO_NOTHING,
 	};
-	bool move_and_slide();
+	bool move_and_slide(double delta);
 	void apply_floor_snap();
 
 	const Vector3 &get_velocity() const;
 	void set_velocity(const Vector3 &p_velocity);
 
+	const Vector3 &get_real_velocity() const;
+	void set_real_velocity(const Vector3 &p_real_velocity);
+	
+	void set_platform_velocity(const Vector3 &p_velocity);
+	const Vector3 &get_platform_velocity() const;
+
+	void set_platform_ceiling_velocity(const Vector3 &p_velocity);
+	const Vector3 &get_platform_ceiling_velocity() const;
+
+
+	void set_platform_object_id(const uint64_t p_platform_id);
+	uint64_t get_platform_object_id() const;
+
 	bool is_on_floor() const;
+	void set_is_on_floor(bool p_enabled);
+
 	bool is_on_floor_only() const;
 	bool is_on_wall() const;
 	bool is_on_wall_only() const;
 	bool is_on_ceiling() const;
 	bool is_on_ceiling_only() const;
+
 	const Vector3 &get_last_motion() const;
+	void set_last_motion(const Vector3 &p_motion);
+
+	Vector3 get_previous_position() const;
+	void set_previous_position(const Vector3 &p_previous_position);
+
 	Vector3 get_position_delta() const;
 	const Vector3 &get_floor_normal() const;
 	const Vector3 &get_wall_normal() const;
-	const Vector3 &get_real_velocity() const;
+	const Vector3 &get_ceiling_normal() const;
 	real_t get_floor_angle(const Vector3 &p_up_direction = Vector3(0.0, 1.0, 0.0)) const;
-	const Vector3 &get_platform_velocity() const;
+
+	void set_platform_rid(const RID &p_platform_rid);
+	RID get_platform_rid() const;
+
+	void set_is_on_wall(bool p_enabled);
+	void set_is_on_ceiling(bool p_enabled);
+	void set_floor_normal(const Vector3 &p_normal);
+	void set_wall_normal(const Vector3 &p_normal);
+	void set_ceiling_normal(const Vector3 &p_normal);
+	
 	const Vector3 &get_platform_angular_velocity() const;
 
 	virtual Vector3 get_linear_velocity() const override;

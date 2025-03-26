@@ -33,9 +33,9 @@
 //so, if you pass 45 as limit, avoid numerical precision errors when angle is 45.
 #define FLOOR_ANGLE_THRESHOLD 0.01
 
-bool CharacterBody3D::move_and_slide() {
+bool CharacterBody3D::move_and_slide(double delta) {
 	// Hack in order to work with calling from _process as well as from _physics_process; calling from thread is risky
-	double delta = Engine::get_singleton()->is_in_physics_frame() ? get_physics_process_delta_time() : get_process_delta_time();
+	// double delta = Engine::get_singleton()->is_in_physics_frame() ? get_physics_process_delta_time() : get_process_delta_time();
 
 	for (int i = 0; i < 3; i++) {
 		if (locked_axis & (1 << i)) {
@@ -63,11 +63,15 @@ bool CharacterBody3D::move_and_slide() {
 			if (ObjectDB::get_instance(platform_object_id)) {
 				//this approach makes sure there is less delay between the actual body velocity and the one we saved
 				bs = PhysicsServer3D::get_singleton()->body_get_direct_state(platform_rid);
+				// Object *obj = ObjectDB::get_instance(platform_object_id);
+				// PhysicsBody3D *physics_body = Object::cast_to<PhysicsBody3D>(obj);
+				// current_platform_velocity = physics_body->get_linear_velocity();
 			}
 
 			if (bs) {
 				Vector3 local_position = gt.origin - bs->get_transform().origin;
 				current_platform_velocity = bs->get_velocity_at_local_position(local_position);
+				
 			} else {
 				// Body is removed or destroyed, invalidate floor.
 				current_platform_velocity = Vector3();
@@ -123,6 +127,21 @@ bool CharacterBody3D::move_and_slide() {
 	}
 
 	return motion_results.size() > 0;
+}
+
+Vector3 CharacterBody3D::get_previous_position() const {
+	return previous_position;
+}
+void CharacterBody3D::set_previous_position(const Vector3 &p_previous_position) {
+	previous_position = p_previous_position;
+}
+
+void CharacterBody3D::set_platform_rid(const RID &p_platform_rid) {
+	platform_rid = p_platform_rid;
+}
+
+RID CharacterBody3D::get_platform_rid() const {
+	return platform_rid;
 }
 
 void CharacterBody3D::_move_and_slide_grounded(double p_delta, bool p_was_on_floor) {
@@ -232,7 +251,8 @@ void CharacterBody3D::_move_and_slide_grounded(double p_delta, bool p_was_on_flo
 							} else {
 								// Travel is too high to be safely canceled, we take it into account.
 								result.travel = result.travel.slide(up_direction);
-								motion = result.remainder;
+								//motion = result.remainder;
+								motion = motion.normalized() * result.travel.length();
 							}
 							set_global_transform(gt);
 							// Determines if you are on the ground, and limits the possibility of climbing on the walls because of the approximations.
@@ -613,6 +633,15 @@ void CharacterBody3D::set_safe_margin(real_t p_margin) {
 	margin = p_margin;
 }
 
+uint64_t CharacterBody3D::get_platform_object_id() const {
+	return (uint64_t)platform_object_id;
+}
+
+void CharacterBody3D::set_platform_object_id(uint64_t p_id) {
+	ObjectID id = ObjectID((uint64_t)p_id);
+	platform_object_id = id;
+}
+
 real_t CharacterBody3D::get_safe_margin() const {
 	return margin;
 }
@@ -625,8 +654,15 @@ void CharacterBody3D::set_velocity(const Vector3 &p_velocity) {
 	velocity = p_velocity;
 }
 
+void CharacterBody3D::set_real_velocity(const Vector3 &p_velocity) {
+	real_velocity = p_velocity;
+}
+
 bool CharacterBody3D::is_on_floor() const {
 	return collision_state.floor;
+}
+void CharacterBody3D::set_is_on_floor(bool p_enabled) {
+	collision_state.floor = p_enabled;
 }
 
 bool CharacterBody3D::is_on_floor_only() const {
@@ -636,6 +672,9 @@ bool CharacterBody3D::is_on_floor_only() const {
 bool CharacterBody3D::is_on_wall() const {
 	return collision_state.wall;
 }
+void CharacterBody3D::set_is_on_wall(bool p_enabled) {
+	collision_state.wall = p_enabled;
+}
 
 bool CharacterBody3D::is_on_wall_only() const {
 	return collision_state.wall && !collision_state.floor && !collision_state.ceiling;
@@ -643,6 +682,9 @@ bool CharacterBody3D::is_on_wall_only() const {
 
 bool CharacterBody3D::is_on_ceiling() const {
 	return collision_state.ceiling;
+}
+void CharacterBody3D::set_is_on_ceiling(bool p_enabled) {
+	collision_state.ceiling = p_enabled;
 }
 
 bool CharacterBody3D::is_on_ceiling_only() const {
@@ -653,12 +695,32 @@ const Vector3 &CharacterBody3D::get_floor_normal() const {
 	return floor_normal;
 }
 
+void CharacterBody3D::set_floor_normal(const Vector3 &p_normal) {
+	floor_normal = p_normal;
+}
+
 const Vector3 &CharacterBody3D::get_wall_normal() const {
 	return wall_normal;
 }
 
+void CharacterBody3D::set_wall_normal(const Vector3 &p_normal) {
+	wall_normal = p_normal;
+}
+
+const Vector3 &CharacterBody3D::get_ceiling_normal() const {
+	return ceiling_normal;
+}
+
+void CharacterBody3D::set_ceiling_normal(const Vector3 &p_normal) {
+	ceiling_normal = p_normal;
+}
+
 const Vector3 &CharacterBody3D::get_last_motion() const {
 	return last_motion;
+}
+
+void CharacterBody3D::set_last_motion(const Vector3 &p_motion) {
+	last_motion = p_motion;
 }
 
 Vector3 CharacterBody3D::get_position_delta() const {
@@ -676,6 +738,18 @@ real_t CharacterBody3D::get_floor_angle(const Vector3 &p_up_direction) const {
 
 const Vector3 &CharacterBody3D::get_platform_velocity() const {
 	return platform_velocity;
+}
+
+void CharacterBody3D::set_platform_velocity(const Vector3 &p_velocity) {
+	platform_velocity = p_velocity;
+}
+
+const Vector3 &CharacterBody3D::get_platform_ceiling_velocity() const {
+	return platform_ceiling_velocity;
+}
+
+void CharacterBody3D::set_platform_ceiling_velocity(const Vector3 &p_velocity) {
+	platform_ceiling_velocity = p_velocity;
 }
 
 const Vector3 &CharacterBody3D::get_platform_angular_velocity() const {
@@ -840,11 +914,14 @@ void CharacterBody3D::_notification(int p_what) {
 }
 
 void CharacterBody3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("move_and_slide"), &CharacterBody3D::move_and_slide);
+	ClassDB::bind_method(D_METHOD("move_and_slide", "delta"), &CharacterBody3D::move_and_slide);
 	ClassDB::bind_method(D_METHOD("apply_floor_snap"), &CharacterBody3D::apply_floor_snap);
 
 	ClassDB::bind_method(D_METHOD("set_velocity", "velocity"), &CharacterBody3D::set_velocity);
 	ClassDB::bind_method(D_METHOD("get_velocity"), &CharacterBody3D::get_velocity);
+
+	ClassDB::bind_method(D_METHOD("set_previous_position", "position"), &CharacterBody3D::set_previous_position);
+	ClassDB::bind_method(D_METHOD("get_previous_position"), &CharacterBody3D::get_previous_position);
 
 	ClassDB::bind_method(D_METHOD("set_safe_margin", "margin"), &CharacterBody3D::set_safe_margin);
 	ClassDB::bind_method(D_METHOD("get_safe_margin"), &CharacterBody3D::get_safe_margin);
@@ -878,18 +955,41 @@ void CharacterBody3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_platform_on_leave"), &CharacterBody3D::get_platform_on_leave);
 
 	ClassDB::bind_method(D_METHOD("is_on_floor"), &CharacterBody3D::is_on_floor);
+	ClassDB::bind_method(D_METHOD("set_is_on_floor", "is_on_floor"), &CharacterBody3D::set_is_on_floor);
+
 	ClassDB::bind_method(D_METHOD("is_on_floor_only"), &CharacterBody3D::is_on_floor_only);
 	ClassDB::bind_method(D_METHOD("is_on_ceiling"), &CharacterBody3D::is_on_ceiling);
+	ClassDB::bind_method(D_METHOD("set_is_on_ceiling", "is_on_ceiling"), &CharacterBody3D::set_is_on_ceiling);
+
+	ClassDB::bind_method(D_METHOD("get_platform_rid"), &CharacterBody3D::get_platform_rid);
+	ClassDB::bind_method(D_METHOD("set_platform_rid", "platform_rid"), &CharacterBody3D::set_platform_rid);
+
 	ClassDB::bind_method(D_METHOD("is_on_ceiling_only"), &CharacterBody3D::is_on_ceiling_only);
 	ClassDB::bind_method(D_METHOD("is_on_wall"), &CharacterBody3D::is_on_wall);
+	ClassDB::bind_method(D_METHOD("set_is_on_wall", "is_on_wall"), &CharacterBody3D::set_is_on_wall);
+
 	ClassDB::bind_method(D_METHOD("is_on_wall_only"), &CharacterBody3D::is_on_wall_only);
 	ClassDB::bind_method(D_METHOD("get_floor_normal"), &CharacterBody3D::get_floor_normal);
+	ClassDB::bind_method(D_METHOD("set_floor_normal", "floor_normal"), &CharacterBody3D::set_floor_normal);
+
+	ClassDB::bind_method(D_METHOD("get_ceiling_normal"), &CharacterBody3D::get_ceiling_normal);
+	ClassDB::bind_method(D_METHOD("set_ceiling_normal", "ceiling_normal"), &CharacterBody3D::set_ceiling_normal);
+	
 	ClassDB::bind_method(D_METHOD("get_wall_normal"), &CharacterBody3D::get_wall_normal);
+	ClassDB::bind_method(D_METHOD("set_wall_normal", "wall_normal"), &CharacterBody3D::set_wall_normal);
 	ClassDB::bind_method(D_METHOD("get_last_motion"), &CharacterBody3D::get_last_motion);
+	ClassDB::bind_method(D_METHOD("set_last_motion", "motion"), &CharacterBody3D::set_last_motion);
 	ClassDB::bind_method(D_METHOD("get_position_delta"), &CharacterBody3D::get_position_delta);
 	ClassDB::bind_method(D_METHOD("get_real_velocity"), &CharacterBody3D::get_real_velocity);
+	ClassDB::bind_method(D_METHOD("set_real_velocity", "velocity"), &CharacterBody3D::set_real_velocity);
 	ClassDB::bind_method(D_METHOD("get_floor_angle", "up_direction"), &CharacterBody3D::get_floor_angle, DEFVAL(Vector3(0.0, 1.0, 0.0)));
 	ClassDB::bind_method(D_METHOD("get_platform_velocity"), &CharacterBody3D::get_platform_velocity);
+	ClassDB::bind_method(D_METHOD("set_platform_velocity", "platform_velocity"), &CharacterBody3D::set_platform_velocity);
+
+	ClassDB::bind_method(D_METHOD("get_platform_ceiling_velocity"), &CharacterBody3D::get_platform_ceiling_velocity);
+	ClassDB::bind_method(D_METHOD("set_platform_ceiling_velocity", "platform_ceiling_velocity"), &CharacterBody3D::set_platform_ceiling_velocity);
+	ClassDB::bind_method(D_METHOD("get_platform_object_id"), &CharacterBody3D::get_platform_object_id);
+	ClassDB::bind_method(D_METHOD("set_platform_object_id", "object_id"), &CharacterBody3D::set_platform_object_id);
 	ClassDB::bind_method(D_METHOD("get_platform_angular_velocity"), &CharacterBody3D::get_platform_angular_velocity);
 	ClassDB::bind_method(D_METHOD("get_slide_collision_count"), &CharacterBody3D::get_slide_collision_count);
 	ClassDB::bind_method(D_METHOD("get_slide_collision", "slide_idx"), &CharacterBody3D::_get_slide_collision);

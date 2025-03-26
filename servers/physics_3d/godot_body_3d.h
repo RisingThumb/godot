@@ -320,7 +320,7 @@ public:
 	void integrate_velocities(real_t p_step);
 
 	_FORCE_INLINE_ Vector3 get_velocity_in_local_point(const Vector3 &rel_pos) const {
-		return linear_velocity + angular_velocity.cross(rel_pos - center_of_mass);
+		return get_linear_velocity(); //+ angular_velocity.cross(rel_pos - center_of_mass);
 	}
 
 	_FORCE_INLINE_ real_t compute_impulse_denominator(const Vector3 &p_pos, const Vector3 &p_normal) const {
