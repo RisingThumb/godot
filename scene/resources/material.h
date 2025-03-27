@@ -195,6 +195,7 @@ public:
 	enum ShadingMode {
 		SHADING_MODE_UNSHADED,
 		SHADING_MODE_PER_PIXEL,
+		SHADING_MODE_PER_TEXEL,
 		SHADING_MODE_PER_VERTEX,
 		SHADING_MODE_MAX
 	};
@@ -503,7 +504,7 @@ private:
 	int particles_anim_v_frames = 0;
 	bool particles_anim_loop = false;
 	Transparency transparency = TRANSPARENCY_DISABLED;
-	ShadingMode shading_mode = SHADING_MODE_PER_PIXEL;
+	ShadingMode shading_mode = SHADING_MODE_PER_TEXEL;
 
 	TextureFilter texture_filter = TEXTURE_FILTER_LINEAR_WITH_MIPMAPS;
 

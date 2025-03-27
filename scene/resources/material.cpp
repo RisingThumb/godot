@@ -1059,6 +1059,43 @@ uniform vec3 uv1_offset;
 uniform vec3 uv2_scale;
 uniform vec3 uv2_offset;
 )";
+	// Per-texel function
+	if (shading_mode == SHADING_MODE_PER_TEXEL) {
+		code += R"(
+	vec3 calculate_snapped(vec2 originalUV, vec3 originalWorldPos, vec4 texelSize){
+	// 1.) Calculate how much the texture UV coords need to
+	//     shift to be at the center of the nearest texel.
+	vec2 centerUV = floor(originalUV * (texelSize.zw))/texelSize.zw + (texelSize.xy/2.0);
+	vec2 dUV = (centerUV - originalUV);
+
+	// 2b.) Calculate how much the texture coords vary over fragment space.
+	//      This essentially defines a 2x2 matrix that gets
+	//      texture space (UV) deltas from fragment space (ST) deltas
+	// Note: I call fragment space (S,T) to disambiguate.
+	mat2 dUVdS = mat2(dFdx(originalUV), dFdy(originalUV));
+
+	// 2c.) Invert the fragment from texture matrix
+	mat2 dSTdUV = inverse(dUVdS);
+
+	// 2d.) Convert the UV delta to a fragment space delta
+	vec2 dST = dSTdUV * dUV;
+
+	// 2e.) Calculate how much the world coords vary over fragment space.
+	vec3 dXYZdS = dFdx(originalWorldPos);
+	vec3 dXYZdT = dFdy(originalWorldPos);
+
+	// 2f.) Finally, convert our fragment space delta to a world space delta
+	// And be sure to clamp it to SOMETHING in case the derivative calc went insane
+	// Here I clamp it to -1 to 1 unit in unity, which should be orders of magnitude greater
+	// than the size of any texel.
+	vec3 dXYZ = dXYZdS * dST[0] + dXYZdT * dST[1]*0.5;
+
+	// 3.) Transform the snapped UV back to world space
+	return originalWorldPos + dXYZ;
+}
+)";
+	}
+
 
 	// Generate vertex shader.
 	code += R"(
@@ -1328,7 +1365,6 @@ vec4 triplanar_texture(sampler2D p_sampler, vec3 p_weights, vec3 p_triplanar_pos
 	// Generate fragment shader.
 	code += R"(
 void fragment() {)";
-
 	if (!flags[FLAG_UV1_USE_TRIPLANAR]) {
 		code += R"(
 	vec2 base_uv = UV;
@@ -1860,6 +1896,16 @@ void fragment() {)";
 		code += R"(	vec3 detail_norm = mix(NORMAL_MAP, detail_norm_tex.rgb, detail_tex.a);
 	NORMAL_MAP = mix(NORMAL_MAP, detail_norm, detail_mask_tex.r);
 	ALBEDO.rgb = mix(ALBEDO.rgb, detail, detail_mask_tex.r);
+)";
+	}
+	if (shading_mode == SHADING_MODE_PER_TEXEL) {
+		code += R"(
+	ivec2 texSize = ivec2(vec2(textureSize(texture_albedo, 0))*0.5*0.5);
+	// vec3 world_position = (INV_VIEW_MATRIX*vec4(VERTEX, 1.0)).xyz;
+	vec3 snapped_world_pos = calculate_snapped(base_uv, VERTEX.xyz, vec4(1.0/vec2(texSize), vec2(texSize)));
+	vec3 result = snapped_world_pos;
+	//ALBEDO = snapped_world_pos*slider;
+	LIGHT_VERTEX = snapped_world_pos;
 )";
 	}
 
@@ -3079,7 +3125,7 @@ void BaseMaterial3D::_bind_methods() {
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "no_depth_test"), "set_flag", "get_flag", FLAG_DISABLE_DEPTH_TEST);
 
 	ADD_GROUP("Shading", "");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "shading_mode", PROPERTY_HINT_ENUM, "Unshaded,Per-Pixel,Per-Vertex"), "set_shading_mode", "get_shading_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "shading_mode", PROPERTY_HINT_ENUM, "Unshaded,Per-Pixel,Per-Texel,Per-Vertex"), "set_shading_mode", "get_shading_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "diffuse_mode", PROPERTY_HINT_ENUM, "Burley,Lambert,Lambert Wrap,Toon"), "set_diffuse_mode", "get_diffuse_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "specular_mode", PROPERTY_HINT_ENUM, "SchlickGGX,Toon,Disabled"), "set_specular_mode", "get_specular_mode");
 	ADD_PROPERTYI(PropertyInfo(Variant::BOOL, "disable_ambient_light"), "set_flag", "get_flag", FLAG_DISABLE_AMBIENT_LIGHT);
@@ -3281,6 +3327,7 @@ void BaseMaterial3D::_bind_methods() {
 
 	BIND_ENUM_CONSTANT(SHADING_MODE_UNSHADED);
 	BIND_ENUM_CONSTANT(SHADING_MODE_PER_PIXEL);
+	BIND_ENUM_CONSTANT(SHADING_MODE_PER_TEXEL);
 	BIND_ENUM_CONSTANT(SHADING_MODE_PER_VERTEX);
 	BIND_ENUM_CONSTANT(SHADING_MODE_MAX);
 
